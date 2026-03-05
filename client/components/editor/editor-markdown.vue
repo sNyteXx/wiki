@@ -103,25 +103,40 @@
             v-btn.animated.fadeIn.wait-p12s(icon, tile, v-on='on').mx-0
               v-icon mdi-file-document-plus-outline
           v-list.py-0
-            v-list-item(@click='insertAfter({ content: `| Column 1 | Column 2 | Column 3 |\n|----------|----------|----------|\n| Cell 1   | Cell 2   | Cell 3   |\n| Cell 4   | Cell 5   | Cell 6   |`, newLine: true })')
+            v-list-item(@click='insertAfter({ content: `| Header 1 | Header 2 | Header 3 |\n|----------|----------|----------|\n| Foo      | Bar      | Xyz      |\n| Abc      | Def      | 123      |\n{.dense}`, newLine: true })')
               v-list-item-action
                 v-icon mdi-table
-              v-list-item-title Table
+              v-list-item-title Tabelle
             v-divider
-            v-list-item(@click='insertAfter({ content: `- [Link 1](https://example.com)\n- [Link 2](https://example.com)\n- [Link 3](https://example.com)`, newLine: true })')
+            v-list-item(@click='insertAfter({ content: `- [Link Titel *Untertitel hier*](https://example.com)\n- [Link Titel *Untertitel hier*](https://example.com)\n- [Link Titel *Untertitel hier*](https://example.com)\n{.links-list}`, newLine: true })')
               v-list-item-action
                 v-icon mdi-link-variant
-              v-list-item-title Links List
+              v-list-item-title Links-Liste
             v-divider
-            v-list-item(@click='insertAfter({ content: `- [ ] Task 1\n- [ ] Task 2\n- [ ] Task 3`, newLine: true })')
+            v-list-item(@click='insertAfter({ content: `- [x] Erledigte Aufgabe\n- [x] Weitere erledigte Aufgabe\n- [ ] Offene Aufgabe`, newLine: true })')
               v-list-item-action
                 v-icon mdi-checkbox-marked-outline
-              v-list-item-title Task List
+              v-list-item-title Checkliste
             v-divider
-            v-list-item(@click='insertAfter({ content: `## Section 1\n\nContent for section 1.\n\n## Section 2\n\nContent for section 2.`, newLine: true })')
+            v-list-item(@click='insertAfter({ content: `## Tabset {.tabset}\n\n### Tab 1\n\nInhalt Tab 1\n\n### Tab 2\n\nInhalt Tab 2\n\n##`, newLine: true })')
               v-list-item-action
-                v-icon mdi-text-box-outline
-              v-list-item-title Sections
+                v-icon mdi-tab
+              v-list-item-title Tabset
+            v-divider
+            v-list-item(@click='insertAfter({ content: `Text[^1] mit Fußnote.[^note]\n\n[^1]: Fußnote 1\n[^note]: Fußnote 2`, newLine: true })')
+              v-list-item-action
+                v-icon mdi-format-superscript
+              v-list-item-title Fußnoten
+            v-divider
+            v-list-item(@click='insertAfter({ content: `<iframe src="http://192.168.0.9/datei.pdf"\n        width="100%"\n        height="800"\n        style="border:0;">\n</iframe>`, newLine: true })')
+              v-list-item-action
+                v-icon mdi-file-pdf-box
+              v-list-item-title PDF einbinden
+            v-divider
+            v-list-item(@click='insertAfter({ content: `<div class="faccordion">\n\n- ### Abschnitt 1\n  Inhalt\n\n- ### Abschnitt 2\n  Inhalt\n\n</div>`, newLine: true })')
+              v-list-item-action
+                v-icon mdi-format-list-group
+              v-list-item-title Accordion
         template(v-if='$vuetify.breakpoint.mdAndUp')
           v-spacer
           v-tooltip(bottom, color='primary', v-if='previewShown')
