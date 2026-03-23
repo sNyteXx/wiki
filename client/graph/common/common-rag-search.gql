@@ -1,0 +1,13 @@
+query ($query: String!, $topK: Int) {
+  rag {
+    search(query: $query, topK: $topK) {
+      id
+      pageId
+      path
+      locale
+      title
+      chunk
+      score
+    }
+  }
+}

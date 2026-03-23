@@ -145,3 +145,75 @@ dataPath: ./data
 # file uploads.
 
 bodyParserLimit: 5mb
+
+# ---------------------------------------------------------------------
+# RAG (OpenAI + pgvector)
+# ---------------------------------------------------------------------
+# Requires PostgreSQL with pgvector extension installed.
+# The RAG storage schema is created only by an explicit admin rebuild,
+# not by normal application startup or image deployment.
+
+rag:
+  enabled: false
+  autoBootstrap: false
+  # Providers: openai | claude | gemini | mistral | ollama
+  chatProvider: openai
+  # Providers for embeddings: openai | gemini | mistral | ollama
+  embeddingProvider: openai
+  maxChunkChars: 1200
+  chunkOverlapChars: 150
+  maxCandidates: 60
+  defaultTopK: 8
+  # OpenAI settings
+  embeddingModel: text-embedding-3-small
+  embeddingDimensions: 1536
+  chatModel: gpt-4.1-mini
+  # Optional override. Empty uses the built-in safe default prompt.
+  systemPrompt: ''
+  # Default chat verbosity for the page chatbot: short | standard | detailed
+  defaultAnswerMode: short
+  # Prompt preset: balanced | concise | bullet | support
+  promptPreset: balanced
+  # If the best retrieval score stays below this value, the bot answers that
+  # the available sources are not strong enough.
+  noAnswerThreshold: 0.45
+  # When true, the assistant must stay strictly anchored to the sources.
+  strictCitationMode: true
+  # Optional alias rules, one per line:
+  # urlaubsantrag => urlaub, abwesenheit
+  queryAliasesText: ''
+  # Additional full safety rebuild interval in hours. 0 disables it.
+  # New/changed/moved/deleted pages are still indexed immediately.
+  scheduledRebuildHours: 0
+  enableSearchButton: false
+  openaiBaseUrl: https://api.openai.com/v1
+  openaiApiKey: ''
+  # Claude settings
+  claudeBaseUrl: https://api.anthropic.com/v1
+  claudeApiKey: ''
+  claudeModel: claude-3-5-sonnet-latest
+  # Gemini settings
+  geminiBaseUrl: https://generativelanguage.googleapis.com/v1beta
+  geminiApiKey: ''
+  geminiChatModel: gemini-1.5-pro
+  geminiEmbeddingModel: text-embedding-004
+  # Mistral settings
+  mistralBaseUrl: https://api.mistral.ai/v1
+  mistralApiKey: ''
+  mistralChatModel: mistral-large-latest
+  mistralEmbeddingModel: mistral-embed
+  # Ollama settings
+  ollamaBaseUrl: http://localhost:11434
+  ollamaChatModel: llama3.1:8b
+  ollamaEmbeddingModel: nomic-embed-text
+  requestTimeoutMs: 30000
+  # Empty means all users with normal Wiki read permissions can use chatbot.
+  # Set explicit group IDs to restrict chatbot visibility.
+  allowedGroups: []
+  # Optional hard allowlist for indexed and searchable wiki paths.
+  # Examples: [docs, handbook/hr]
+  allowedPathPrefixes: []
+  # Hard exclusions for indexed and searchable wiki paths.
+  # Exclusions win over the allowlist.
+  # Examples: [confidential, handbook/hr/urlaub]
+  excludedPathPrefixes: []

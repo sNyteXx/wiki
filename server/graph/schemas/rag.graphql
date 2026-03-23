@@ -1,0 +1,290 @@
+# ===============================================
+# RAG
+# ===============================================
+
+extend type Query {
+  rag: RagQuery
+}
+
+extend type Mutation {
+  rag: RagMutation
+}
+
+# -----------------------------------------------
+# QUERIES
+# -----------------------------------------------
+
+type RagQuery {
+  config: RagConfig @auth(requires: ["manage:system"])
+
+  status: RagStatus @auth(requires: ["manage:system"])
+
+  viewerState(
+    path: String
+  ): RagViewerState! @auth(requires: ["read:pages", "manage:system"])
+
+  search(
+    query: String!
+    locale: String
+    path: String
+    pathMode: RagPathMode
+    topK: Int
+  ): [RagChunkResult]! @auth(requires: ["read:pages", "manage:system"])
+
+  ask(
+    query: String!
+    locale: String
+    path: String
+    pathMode: RagPathMode
+    topK: Int
+    answerMode: String
+    history: [RagHistoryMessageInput!]
+  ): RagAnswerResponse! @auth(requires: ["read:pages", "manage:system"])
+}
+
+# -----------------------------------------------
+# MUTATIONS
+# -----------------------------------------------
+
+type RagMutation {
+  saveConfig(
+    config: RagConfigInput!
+  ): DefaultResponse @auth(requires: ["manage:system"])
+
+  rebuildIndex: DefaultResponse @auth(requires: ["manage:system"])
+
+  fetchProviderModels(
+    input: RagProviderConnectionInput!
+  ): RagProviderModelsResponse! @auth(requires: ["manage:system"])
+
+  testProviderConnection(
+    input: RagProviderConnectionInput!
+  ): RagProviderConnectionTestResponse! @auth(requires: ["manage:system"])
+
+  emailTranscript(
+    input: RagTranscriptEmailInput!
+  ): DefaultResponse @auth(requires: ["read:pages", "manage:system"])
+}
+
+# -----------------------------------------------
+# TYPES
+# -----------------------------------------------
+
+type RagChunkResult {
+  id: Int!
+  pageId: Int!
+  path: String!
+  locale: String!
+  title: String!
+  chunk: String!
+  score: Float!
+}
+
+type RagAnswerResponse {
+  answer: String!
+  chunks: [RagChunkResult]!
+}
+
+type RagConfig {
+  enabled: Boolean!
+  autoBootstrap: Boolean!
+  chatProvider: String!
+  embeddingProvider: String!
+  maxChunkChars: Int!
+  chunkOverlapChars: Int!
+  maxCandidates: Int!
+  defaultTopK: Int!
+  embeddingModel: String!
+  embeddingDimensions: Int!
+  chatModel: String!
+  systemPrompt: String!
+  defaultAnswerMode: String!
+  promptPreset: String!
+  noAnswerThreshold: Float!
+  strictCitationMode: Boolean!
+  queryAliasesText: String!
+  scheduledRebuildHours: Int!
+  enableSearchButton: Boolean!
+  enableStreaming: Boolean!
+  openaiBaseUrl: String!
+  openaiApiKey: String!
+  claudeBaseUrl: String!
+  claudeApiKey: String!
+  claudeModel: String!
+  geminiBaseUrl: String!
+  geminiApiKey: String!
+  geminiChatModel: String!
+  geminiEmbeddingModel: String!
+  mistralBaseUrl: String!
+  mistralApiKey: String!
+  mistralChatModel: String!
+  mistralEmbeddingModel: String!
+  ollamaBaseUrl: String!
+  ollamaChatModel: String!
+  ollamaEmbeddingModel: String!
+  requestTimeoutMs: Int!
+  allowedGroups: [Int]!
+  allowedPathPrefixes: [String]!
+  excludedPathPrefixes: [String]!
+}
+
+type RagStatus {
+  configuredEnabled: Boolean!
+  runtimeEnabled: Boolean!
+  canUse: Boolean!
+  streamingSupported: Boolean!
+  streamingEnabled: Boolean!
+  streamingSupportMessage: String!
+  schemaReady: Boolean!
+  schemaEmbeddingDimensions: Int!
+  hasPathRestrictions: Boolean!
+  currentPathAllowed: Boolean!
+  rebuildRecommended: Boolean!
+  statusMessage: String!
+  metadata: RagIndexMetadata
+  job: RagJobStatus!
+}
+
+type RagIndexMetadata {
+  embeddingProvider: String!
+  embeddingModel: String!
+  embeddingDimensions: Int!
+  maxChunkChars: Int!
+  chunkOverlapChars: Int!
+  chunkingStrategy: String!
+  allowedPathPrefixes: [String]!
+  excludedPathPrefixes: [String]!
+  indexedPages: Int!
+  indexedChunks: Int!
+  status: String!
+  message: String!
+  lastBuildStartedAt: Date
+  lastBuildCompletedAt: Date
+  createdAt: Date
+  updatedAt: Date
+}
+
+type RagJobStatus {
+  status: String!
+  progress: Int!
+  message: String!
+  startedAt: Date
+  completedAt: Date
+  processedPages: Int!
+  totalPages: Int!
+  indexedPages: Int!
+  indexedChunks: Int!
+}
+
+type RagViewerState {
+  canUse: Boolean!
+  runtimeEnabled: Boolean!
+  searchButtonEnabled: Boolean!
+  streamingSupported: Boolean!
+  streamingEnabled: Boolean!
+  streamingSupportMessage: String!
+  defaultAnswerMode: String!
+  schemaReady: Boolean!
+  currentPathAllowed: Boolean!
+  hasPathRestrictions: Boolean!
+  rebuildRecommended: Boolean!
+  statusMessage: String!
+}
+
+type RagProviderModelsResponse {
+  provider: String!
+  chatModels: [String]!
+  embeddingModels: [String]!
+}
+
+type RagProviderConnectionTestResponse {
+  provider: String!
+  chatModel: String!
+  embeddingModel: String!
+  chatSucceeded: Boolean!
+  embeddingSucceeded: Boolean!
+  streamingSupported: Boolean!
+  streamingSucceeded: Boolean!
+  chatMessage: String!
+  embeddingMessage: String!
+  streamingMessage: String!
+}
+
+input RagConfigInput {
+  enabled: Boolean!
+  autoBootstrap: Boolean!
+  chatProvider: String!
+  embeddingProvider: String!
+  maxChunkChars: Int!
+  chunkOverlapChars: Int!
+  maxCandidates: Int!
+  defaultTopK: Int!
+  embeddingModel: String!
+  embeddingDimensions: Int!
+  chatModel: String!
+  systemPrompt: String!
+  defaultAnswerMode: String!
+  promptPreset: String!
+  noAnswerThreshold: Float!
+  strictCitationMode: Boolean!
+  queryAliasesText: String!
+  scheduledRebuildHours: Int!
+  enableSearchButton: Boolean!
+  enableStreaming: Boolean!
+  openaiBaseUrl: String!
+  openaiApiKey: String!
+  claudeBaseUrl: String!
+  claudeApiKey: String!
+  claudeModel: String!
+  geminiBaseUrl: String!
+  geminiApiKey: String!
+  geminiChatModel: String!
+  geminiEmbeddingModel: String!
+  mistralBaseUrl: String!
+  mistralApiKey: String!
+  mistralChatModel: String!
+  mistralEmbeddingModel: String!
+  ollamaBaseUrl: String!
+  ollamaChatModel: String!
+  ollamaEmbeddingModel: String!
+  requestTimeoutMs: Int!
+  allowedGroups: [Int]!
+  allowedPathPrefixes: [String]!
+  excludedPathPrefixes: [String]!
+}
+
+input RagHistoryMessageInput {
+  role: String!
+  content: String!
+}
+
+input RagProviderConnectionInput {
+  provider: String!
+  baseUrl: String
+  apiKey: String
+  chatModel: String
+  embeddingModel: String
+}
+
+input RagTranscriptEmailInput {
+  to: String!
+  subject: String
+  messages: [RagTranscriptMessageInput!]!
+}
+
+input RagTranscriptMessageInput {
+  role: String!
+  content: String!
+  sources: [RagTranscriptSourceInput!]
+}
+
+input RagTranscriptSourceInput {
+  title: String
+  locale: String
+  path: String!
+}
+
+enum RagPathMode {
+  PREFIX
+  EXACT
+}

@@ -112,6 +112,47 @@ defaults:
       origin: true
     search:
       maxHits: 100
+    rag:
+      enabled: false
+      autoBootstrap: false
+      # The RAG storage schema is created only by an explicit admin rebuild.
+      chatProvider: openai
+      embeddingProvider: openai
+      maxChunkChars: 1200
+      chunkOverlapChars: 150
+      maxCandidates: 60
+      defaultTopK: 8
+      embeddingModel: text-embedding-3-small
+      embeddingDimensions: 1536
+      chatModel: gpt-4.1-mini
+      systemPrompt: ''
+      defaultAnswerMode: short
+      promptPreset: balanced
+      noAnswerThreshold: 0.45
+      strictCitationMode: true
+      queryAliasesText: ''
+      scheduledRebuildHours: 0
+      enableSearchButton: false
+      openaiBaseUrl: https://api.openai.com/v1
+      openaiApiKey: ''
+      claudeBaseUrl: https://api.anthropic.com/v1
+      claudeApiKey: ''
+      claudeModel: claude-3-5-sonnet-latest
+      geminiBaseUrl: https://generativelanguage.googleapis.com/v1beta
+      geminiApiKey: ''
+      geminiChatModel: gemini-1.5-pro
+      geminiEmbeddingModel: text-embedding-004
+      mistralBaseUrl: https://api.mistral.ai/v1
+      mistralApiKey: ''
+      mistralChatModel: mistral-large-latest
+      mistralEmbeddingModel: mistral-embed
+      ollamaBaseUrl: http://localhost:11434
+      ollamaChatModel: llama3.1:8b
+      ollamaEmbeddingModel: nomic-embed-text
+      requestTimeoutMs: 30000
+      allowedGroups: []
+      allowedPathPrefixes: []
+      excludedPathPrefixes: []
     maintainerEmail: security@requarks.io
 localeNamespaces:
   - admin

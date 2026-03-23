@@ -340,6 +340,15 @@ module.exports = class Page extends Model {
     page.safeContent = WIKI.models.pages.cleanHTML(pageContents.render)
     await WIKI.data.searchEngine.created(page)
 
+    // -> Add to RAG Index
+    if (WIKI.rag && WIKI.rag.enabled) {
+      try {
+        await WIKI.rag.upsertPageById(page.id)
+      } catch (err) {
+        WIKI.logger.warn(`(RAG) Failed to index created page ${page.id}: ${err.message}`)
+      }
+    }
+
     // -> Add to Storage
     if (!opts.skipStorage) {
       await WIKI.models.storage.pageEvent({
@@ -450,6 +459,15 @@ module.exports = class Page extends Model {
     const pageContents = await WIKI.models.pages.query().findById(page.id).select('render')
     page.safeContent = WIKI.models.pages.cleanHTML(pageContents.render)
     await WIKI.data.searchEngine.updated(page)
+
+    // -> Update RAG Index
+    if (WIKI.rag && WIKI.rag.enabled) {
+      try {
+        await WIKI.rag.upsertPageById(page.id)
+      } catch (err) {
+        WIKI.logger.warn(`(RAG) Failed to index updated page ${page.id}: ${err.message}`)
+      }
+    }
 
     // -> Update on Storage
     if (!opts.skipStorage) {
@@ -791,6 +809,15 @@ module.exports = class Page extends Model {
       path: opts.destinationPath,
       mode: 'create'
     })
+
+    // -> Update RAG Index
+    if (WIKI.rag && WIKI.rag.enabled) {
+      try {
+        await WIKI.rag.upsertPageById(page.id)
+      } catch (err) {
+        WIKI.logger.warn(`(RAG) Failed to index moved page ${page.id}: ${err.message}`)
+      }
+    }
   }
 
   /**
@@ -830,6 +857,15 @@ module.exports = class Page extends Model {
 
     // -> Delete from Search Index
     await WIKI.data.searchEngine.deleted(page)
+
+    // -> Delete from RAG Index
+    if (WIKI.rag && WIKI.rag.enabled) {
+      try {
+        await WIKI.rag.deletePageIndex(page.id)
+      } catch (err) {
+        WIKI.logger.warn(`(RAG) Failed to remove page ${page.id} from index: ${err.message}`)
+      }
+    }
 
     // -> Delete from Storage
     if (!opts.skipStorage) {

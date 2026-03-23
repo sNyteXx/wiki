@@ -337,6 +337,13 @@
     nav-footer
     notify
     search-results
+    chatbot-bubble(
+      v-if='!printView && isAuthenticated'
+      :locale='locale'
+      :path='path'
+      :rtl='$vuetify.rtl'
+      :bottom-offset='chatbotBottomOffset'
+      )
     v-fab-transition
       v-btn(
         v-if='upBtnShown'
@@ -360,6 +367,7 @@
 import { StatusIndicator } from 'vue-status-indicator'
 import Tabset from './tabset.vue'
 import NavSidebar from './nav-sidebar.vue'
+import ChatbotBubble from './chatbot-bubble.vue'
 import Prism from 'prismjs'
 import mermaid from 'mermaid'
 import { get, sync } from 'vuex-pathify'
@@ -409,7 +417,8 @@ Prism.plugins.toolbar.registerButton('copy-to-clipboard', (env) => {
 export default {
   components: {
     NavSidebar,
-    StatusIndicator
+    StatusIndicator,
+    ChatbotBubble
   },
   props: {
     pageId: {
@@ -573,6 +582,12 @@ export default {
     hasAnyPagePermissions () {
       return this.hasAdminPermission || this.hasWritePagesPermission || this.hasManagePagesPermission ||
         this.hasDeletePagesPermission || this.hasReadSourcePermission || this.hasReadHistoryPermission
+    },
+    showPageEditFab () {
+      return this.hasAnyPagePermissions && _.get(this.editShortcutsObj, 'editFab', false)
+    },
+    chatbotBottomOffset () {
+      return this.showPageEditFab ? 96 : 24
     },
     printView: sync('site/printView'),
     editMenuExternalUrl () {

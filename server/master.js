@@ -20,6 +20,7 @@ module.exports = async () => {
   WIKI.auth = require('./core/auth').init()
   WIKI.lang = require('./core/localization').init()
   WIKI.mail = require('./core/mail').init()
+  WIKI.rag = require('./core/rag').init()
   WIKI.system = require('./core/system').init()
 
   // ----------------------------------------
@@ -92,6 +93,7 @@ module.exports = async () => {
   // ----------------------------------------
 
   app.use(bodyParser.json({ limit: WIKI.config.bodyParserLimit || '1mb' }))
+  await WIKI.rag.bootstrap()
   await WIKI.servers.startGraphQL()
 
   // ----------------------------------------
@@ -164,6 +166,7 @@ module.exports = async () => {
 
   app.use('/', ctrl.auth)
   app.use('/', ctrl.upload)
+  app.use('/', ctrl.rag)
   app.use('/', ctrl.common)
 
   // ----------------------------------------

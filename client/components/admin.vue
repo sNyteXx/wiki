@@ -71,6 +71,9 @@
             v-list-item(to='/search', color='primary')
               v-list-item-avatar(size='24', tile): v-icon mdi-cloud-search-outline
               v-list-item-title {{ $t('admin:search.title') }}
+            v-list-item(to='/chatbot', color='primary')
+              v-list-item-avatar(size='24', tile): v-icon mdi-robot-outline
+              v-list-item-title Chatbot (RAG)
             v-list-item(to='/storage', color='primary')
               v-list-item-avatar(size='24', tile): v-icon mdi-harddisk
               v-list-item-title {{ $t('admin:storage.title') }}
@@ -165,6 +168,7 @@ const router = new VueRouter({
     { path: '/extensions', component: () => import(/* webpackChunkName: "admin" */ './admin/admin-extensions.vue') },
     { path: '/logging', component: () => import(/* webpackChunkName: "admin" */ './admin/admin-logging.vue') },
     { path: '/search', component: () => import(/* webpackChunkName: "admin" */ './admin/admin-search.vue') },
+    { path: '/chatbot', component: () => import(/* webpackChunkName: "admin" */ './admin/admin-chatbot.vue') },
     { path: '/storage', component: () => import(/* webpackChunkName: "admin" */ './admin/admin-storage.vue') },
     { path: '/api', component: () => import(/* webpackChunkName: "admin" */ './admin/admin-api.vue') },
     { path: '/mail', component: () => import(/* webpackChunkName: "admin" */ './admin/admin-mail.vue') },

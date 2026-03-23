@@ -35,6 +35,34 @@
           :length='paginationLength'
           circle
         )
+      .search-results-ai-actions(v-if='canShowAiButton')
+        v-btn.search-results-ai-btn(
+          outlined
+          color='deep-orange darken-2'
+          :loading='aiLoading'
+          @click='runAiSearch'
+        )
+          img.search-results-ai-btn-icon(:src='aiIconUrl', alt='AI')
+          span {{ aiLoading ? 'Suche läuft…' : 'Mit AI suchen' }}
+      .search-results-ai(v-if='aiMode')
+        v-subheader.white--text
+          img.search-results-ai-header-icon(:src='aiIconUrl', alt='AI')
+          span AI-Ergebnisse
+        v-list.search-results-ai-items.radius-7.py-0(two-line, dense)
+          template(v-if='aiResults.length > 0')
+            template(v-for='(item, idx) of aiResults')
+              v-list-item(@click='goToPage(item)', @click.middle='goToPageInNewTab(item)', :key='`ai-${item.locale}-${item.path}-${idx}`')
+                v-list-item-avatar(tile)
+                  img.search-results-ai-item-icon(:src='aiIconUrl', alt='AI')
+                v-list-item-content
+                  v-list-item-title(v-text='item.title')
+                  v-list-item-subtitle.caption(v-text='truncateAiChunk(item.chunk)')
+                  .caption.grey--text(v-text='item.path')
+                v-list-item-action
+                  v-chip(label, outlined, color='deep-orange darken-2') AI
+              v-divider(v-if='idx < aiResults.length - 1')
+          .search-results-ai-empty(v-else-if='!aiLoading')
+            .caption.white--text Keine AI-Ergebnisse gefunden.
       template(v-if='suggestions && suggestions.length > 0')
         v-subheader.white--text.mt-3 {{$t('common:header.searchDidYouMean')}}
         v-list.search-results-suggestions.radius-7(dense, dark)
@@ -56,10 +84,23 @@
 
 <script>
 import _ from 'lodash'
-import { sync } from 'vuex-pathify'
+import gql from 'graphql-tag'
+import { get, sync } from 'vuex-pathify'
 import { OrbitSpinner } from 'epic-spinners'
 
 import searchPagesQuery from 'gql/common/common-pages-query-search.gql'
+import ragSearchQuery from 'gql/common/common-rag-search.gql'
+
+const AI_ICON_URL = '/_assets/img/ai-assistant.png'
+const ragViewerStateQuery = gql`
+  query {
+    rag {
+      viewerState {
+        searchButtonEnabled
+      }
+    }
+  }
+`
 
 export default {
   components: {
@@ -70,6 +111,11 @@ export default {
       cursor: 0,
       pagination: 1,
       perPage: 10,
+      aiIconUrl: AI_ICON_URL,
+      aiMode: false,
+      aiLoading: false,
+      aiResults: [],
+      ragSearchButtonEnabled: false,
       response: {
         results: [],
         suggestions: [],
@@ -83,6 +129,7 @@ export default {
     searchIsLoading: sync('site/searchIsLoading'),
     searchRestrictLocale: sync('site/searchRestrictLocale'),
     searchRestrictPath: sync('site/searchRestrictPath'),
+    isAuthenticated: get('user/authenticated'),
     results() {
       const currentIndex = (this.pagination - 1) * this.perPage
       return this.response.results ? _.slice(this.response.results, currentIndex, currentIndex + this.perPage) : []
@@ -95,11 +142,15 @@ export default {
     },
     paginationLength() {
       return (this.response.totalHits > 0) ? Math.ceil(this.response.totalHits / this.perPage) : 0
+    },
+    canShowAiButton () {
+      return !!this.isAuthenticated && !!this.ragSearchButtonEnabled && !!this.search && this.search.length >= 2
     }
   },
   watch: {
-    search(newValue, oldValue) {
+    search(newValue) {
       this.cursor = 0
+      this.resetAiSearchState()
       if (!newValue || (newValue && newValue.length < 2)) {
         this.searchIsLoading = false
       } else {
@@ -108,6 +159,17 @@ export default {
     },
     results() {
       this.cursor = 0
+    },
+    isAuthenticated: {
+      immediate: true,
+      handler(val) {
+        if (val) {
+          this.loadAiAvailability()
+        } else {
+          this.ragSearchButtonEnabled = false
+          this.resetAiSearchState()
+        }
+      }
     }
   },
   mounted() {
@@ -132,6 +194,59 @@ export default {
     })
   },
   methods: {
+    resetAiSearchState () {
+      this.aiMode = false
+      this.aiLoading = false
+      this.aiResults = []
+    },
+    async loadAiAvailability () {
+      try {
+        const resp = await this.$apollo.query({
+          query: ragViewerStateQuery,
+          fetchPolicy: 'network-only'
+        })
+        this.ragSearchButtonEnabled = !!_.get(resp, 'data.rag.viewerState.searchButtonEnabled', false)
+      } catch (err) {
+        this.ragSearchButtonEnabled = false
+      }
+    },
+    normalizeAiResults (items) {
+      return _.uniqBy(items || [], item => `${item.locale}:${item.path}`)
+    },
+    truncateAiChunk (chunk) {
+      const text = _.trim(_.toString(chunk || '').replace(/\s+/g, ' '))
+      if (text.length <= 150) {
+        return text
+      }
+      return `${text.slice(0, 150).trim()}…`
+    },
+    async runAiSearch () {
+      if (!this.canShowAiButton || this.aiLoading) {
+        return
+      }
+
+      this.aiMode = true
+      this.aiLoading = true
+
+      try {
+        const resp = await this.$apollo.query({
+          query: ragSearchQuery,
+          variables: {
+            query: this.search,
+            topK: 8
+          },
+          fetchPolicy: 'network-only'
+        })
+
+        const rawResults = _.get(resp, 'data.rag.search', [])
+        this.aiResults = this.normalizeAiResults(rawResults)
+      } catch (err) {
+        this.aiResults = []
+        this.$store.commit('pushGraphError', err)
+      } finally {
+        this.aiLoading = false
+      }
+    },
     setSearchTerm(term) {
       this.search = term
     },
@@ -236,6 +351,53 @@ export default {
     .highlighted {
       background: transparent linear-gradient(to bottom, mc('blue', '500'), mc('blue', '700'));
     }
+  }
+
+  &-ai-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 18px;
+  }
+
+  &-ai-btn {
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 600;
+  }
+
+  &-ai-btn-icon,
+  &-ai-header-icon {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    margin-right: 8px;
+    filter: brightness(0) invert(1);
+  }
+
+  &-ai {
+    margin-top: 12px;
+    text-align: left;
+
+    .v-subheader {
+      gap: 8px;
+    }
+  }
+
+  &-ai-items {
+    text-align: left;
+  }
+
+  &-ai-item-icon {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+  }
+
+  &-ai-empty {
+    display: flex;
+    justify-content: center;
+    padding: 16px 0 4px;
   }
 }
 
