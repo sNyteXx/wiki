@@ -88,6 +88,7 @@ type SystemInfo {
   pagesTotal: Int @auth(requires: ["manage:system", "manage:navigation", "manage:pages", "delete:pages"])
   platform: String @auth(requires: ["manage:system"])
   ramTotal: String @auth(requires: ["manage:system"])
+  reviewsPendingTotal: Int @auth(requires: ["manage:system", "manage:navigation", "manage:pages", "delete:pages"])
   sslDomain: String @auth(requires: ["manage:system"])
   sslExpirationDate: Date @auth(requires: ["manage:system"])
   sslProvider: String @auth(requires: ["manage:system"])

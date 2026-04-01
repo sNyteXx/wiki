@@ -422,6 +422,16 @@ module.exports = {
       const total = await WIKI.models.pages.query().count('* as total').first()
       return _.toSafeInteger(total.total)
     },
+    async reviewsPendingTotal () {
+      const total = await WIKI.models.pages.query()
+        .where('isReviewDraft', true)
+        .andWhere(function () {
+          this.where('reviewStatus', 'draft').orWhere('reviewStatus', 'pending')
+        })
+        .count('* as total')
+        .first()
+      return _.toSafeInteger(total.total)
+    },
     async usersTotal () {
       const total = await WIKI.models.users.query().count('* as total').first()
       return _.toSafeInteger(total.total)

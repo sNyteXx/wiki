@@ -5,6 +5,7 @@ query {
       latestVersion
       groupsTotal
       pagesTotal
+      reviewsPendingTotal
       usersTotal
       tagsTotal
     }
