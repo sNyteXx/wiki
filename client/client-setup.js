@@ -1,21 +1,21 @@
 /* eslint-disable import/first */
-import Vue from 'vue'
-import Vuetify from 'vuetify/lib'
+import { createApp, defineAsyncComponent } from 'vue'
+import { createVuetify } from 'vuetify'
 import boot from './modules/boot'
 /* eslint-enable import/first */
 
 window.WIKI = null
 window.boot = boot
 
-Vue.use(Vuetify)
-
-Vue.component('setup', () => import(/* webpackMode: "eager" */ './components/setup.vue'))
-
 let bootstrap = () => {
-  window.WIKI = new Vue({
-    el: '#root',
-    vuetify: new Vuetify()
-  })
+  const vuetify = createVuetify()
+
+  const app = createApp({})
+  app.use(vuetify)
+
+  app.component('setup', defineAsyncComponent(() => import(/* webpackMode: "eager" */ './components/setup.vue')))
+
+  window.WIKI = app.mount('#root')
 }
 
 window.boot.onDOMReady(bootstrap)
