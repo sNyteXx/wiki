@@ -40,7 +40,7 @@
             :items='breadcrumbs'
             divider='/'
             )
-            template(slot='item', slot-scope='props')
+            template(#item='props')
               v-icon(v-if='props.item.path === "/"', small, @click='goHome') mdi-home
               v-btn.ma-0(v-else, :href='props.item.path', small, text) {{props.item.name}}
           template(v-if='!isPublished')
@@ -370,14 +370,12 @@ import NavSidebar from './nav-sidebar.vue'
 import ChatbotBubble from './chatbot-bubble.vue'
 import Prism from 'prismjs'
 import mermaid from 'mermaid'
-import { get, sync } from 'vuex-pathify'
 import _ from 'lodash'
 import ClipboardJS from 'clipboard'
-import Vue from 'vue'
 
 /* global siteLangs */
 
-Vue.component('Tabset', Tabset)
+// Tabset is registered globally via client-app.js or as a local component
 
 Prism.plugins.autoloader.languages_path = '/_assets/js/prism/'
 Prism.plugins.NormalizeWhitespace.setDefaults({
@@ -418,7 +416,8 @@ export default {
   components: {
     NavSidebar,
     StatusIndicator,
-    ChatbotBubble
+    ChatbotBubble,
+    Tabset
   },
   props: {
     pageId: {
@@ -692,25 +691,25 @@ export default {
       }
     },
     pageEdit () {
-      this.$root.$emit('pageEdit')
+      this.$eventBus.$emit('pageEdit')
     },
     pageHistory () {
-      this.$root.$emit('pageHistory')
+      this.$eventBus.$emit('pageHistory')
     },
     pageSource () {
-      this.$root.$emit('pageSource')
+      this.$eventBus.$emit('pageSource')
     },
     pageConvert () {
-      this.$root.$emit('pageConvert')
+      this.$eventBus.$emit('pageConvert')
     },
     pageDuplicate () {
-      this.$root.$emit('pageDuplicate')
+      this.$eventBus.$emit('pageDuplicate')
     },
     pageMove () {
-      this.$root.$emit('pageMove')
+      this.$eventBus.$emit('pageMove')
     },
     pageDelete () {
-      this.$root.$emit('pageDelete')
+      this.$eventBus.$emit('pageDelete')
     },
     handleSideNavVisibility () {
       if (window.innerWidth === this.winWidth) { return }

@@ -10,7 +10,6 @@
 </template>
 
 <script>
-import { get } from 'vuex-pathify'
 import MarkdownIt from 'markdown-it'
 
 const md = new MarkdownIt({

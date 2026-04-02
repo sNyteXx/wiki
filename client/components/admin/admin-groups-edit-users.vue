@@ -81,9 +81,8 @@ export default {
   computed: {
     group: {
       get() { return this.value },
-      set(val) { this.$set('input', val) }
-    },
-    pages () {
+      set(val) { 'input'[val) }
+    }] = pages ( {
       if (this.pagination.rowsPerPage == null || this.pagination.totalItems == null) {
         return 0
       }

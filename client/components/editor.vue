@@ -58,7 +58,6 @@
 <script>
 import _ from 'lodash'
 import gql from 'graphql-tag'
-import { get, sync } from 'vuex-pathify'
 import { AtomSpinner } from 'epic-spinners'
 import { Base64 } from 'js-base64'
 import { StatusIndicator } from 'vue-status-indicator'
@@ -256,7 +255,7 @@ export default {
       }
     }
 
-    this.$root.$on('resetEditorConflict', () => {
+    this.$eventBus.$on('resetEditorConflict', () => {
       this.isConflict = false
     })
 
@@ -274,7 +273,7 @@ export default {
       this.dialogProgress = false
     },
     openConflict() {
-      this.$root.$emit('saveConflict')
+      this.$eventBus.$emit('saveConflict')
     },
     async save({ rethrow = false, overwrite = false } = {}) {
       this.showProgressDialog('saving')
@@ -389,7 +388,7 @@ export default {
             }
           })
           if (_.get(conflictResp, 'data.pages.checkConflicts', false)) {
-            this.$root.$emit('saveConflict')
+            this.$eventBus.$emit('saveConflict')
             throw new Error(this.$t('editor:conflict.warning'))
           }
 

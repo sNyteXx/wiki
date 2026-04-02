@@ -33,7 +33,6 @@
 
 <script>
 import _ from 'lodash'
-import { get } from 'vuex-pathify'
 import gql from 'graphql-tag'
 
 export default {

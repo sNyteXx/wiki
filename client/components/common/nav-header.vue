@@ -250,7 +250,6 @@
 </template>
 
 <script>
-import { get, sync } from 'vuex-pathify'
 import _ from 'lodash'
 
 import movePageMutation from 'gql/common/common-pages-mutation-move.gql'
@@ -348,25 +347,25 @@ export default {
     }
   },
   mounted () {
-    this.$root.$on('pageEdit', () => {
+    this.$eventBus.$on('pageEdit', () => {
       this.pageEdit()
     })
-    this.$root.$on('pageHistory', () => {
+    this.$eventBus.$on('pageHistory', () => {
       this.pageHistory()
     })
-    this.$root.$on('pageSource', () => {
+    this.$eventBus.$on('pageSource', () => {
       this.pageSource()
     })
-    this.$root.$on('pageMove', () => {
+    this.$eventBus.$on('pageMove', () => {
       this.pageMove()
     })
-    this.$root.$on('pageConvert', () => {
+    this.$eventBus.$on('pageConvert', () => {
       this.pageConvert()
     })
-    this.$root.$on('pageDuplicate', () => {
+    this.$eventBus.$on('pageDuplicate', () => {
       this.pageDuplicate()
     })
-    this.$root.$on('pageDelete', () => {
+    this.$eventBus.$on('pageDelete', () => {
       this.pageDelete()
     })
     this.isDevMode = siteConfig.devMode === true
@@ -391,10 +390,10 @@ export default {
       }
     },
     searchEnter () {
-      this.$root.$emit('searchEnter', true)
+      this.$eventBus.$emit('searchEnter', true)
     },
     searchMove(dir) {
-      this.$root.$emit('searchMove', dir)
+      this.$eventBus.$emit('searchMove', dir)
     },
     pageNew () {
       this.newPageModal = true

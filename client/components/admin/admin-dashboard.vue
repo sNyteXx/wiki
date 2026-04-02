@@ -65,7 +65,7 @@
             hide-default-footer
             hide-default-header
             )
-            template(slot='item', slot-scope='props')
+            template(#item='props')
               tr.is-clickable(:active='props.selected', @click='$router.push(`/pages/` + props.item.id)')
                 td
                   .body-2: strong {{ props.item.title }}
@@ -86,7 +86,7 @@
             hide-default-footer
             hide-default-header
             )
-            template(slot='item', slot-scope='props')
+            template(#item='props')
               tr.is-clickable(:active='props.selected', @click='$router.push(`/users/` + props.item.id)')
                 td
                   .body-2: strong {{ props.item.name }}
@@ -108,7 +108,6 @@
 <script>
 import _ from 'lodash'
 import AnimatedNumber from 'animated-number-vue'
-import { get } from 'vuex-pathify'
 import gql from 'graphql-tag'
 import semverLte from 'semver/functions/lte'
 

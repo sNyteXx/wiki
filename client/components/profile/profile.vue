@@ -345,7 +345,6 @@
 </template>
 
 <script>
-import { get } from 'vuex-pathify'
 import gql from 'graphql-tag'
 import _ from 'lodash'
 import Cookies from 'js-cookie'

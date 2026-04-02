@@ -262,7 +262,6 @@
 
 <script>
 import _ from 'lodash'
-import { sync } from 'vuex-pathify'
 import gql from 'graphql-tag'
 
 import editorStore from '../../store/editor'
@@ -455,12 +454,12 @@ export default {
     }
   },
   mounted () {
-    this.$root.$on('editorInsert', opts => {
+    this.$eventBus.$on('editorInsert', opts => {
       this.config.logoUrl = opts.path
     })
   },
-  beforeDestroy() {
-    this.$root.$off('editorInsert')
+  beforeUnmount() {
+    this.$eventBus.$off('editorInsert')
   },
   apollo: {
     config: {

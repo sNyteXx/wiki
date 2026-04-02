@@ -17,6 +17,8 @@ import Cookies from 'js-cookie'
 
 import { useMainStore } from './store'
 import { useUserStore } from './store/user'
+import compatStorePlugin from './libs/compat-store'
+import eventBus from './libs/event-bus'
 
 // ====================================
 // Load Modules
@@ -37,6 +39,7 @@ import helpers from './helpers'
 
 window.WIKI = null
 window.boot = boot
+window.eventBus = eventBus
 
 moment.locale(siteConfig.lang)
 
@@ -133,21 +136,22 @@ window.graphQL = new ApolloClient({
 // ====================================
 
 let bootstrap = () => {
+  const pinia = createPinia()
+
+  // Create a temporary app to initialize Pinia before mount
+  const initApp = createApp({ render: () => null })
+  initApp.use(pinia)
+
+  const mainStore = useMainStore()
+
   window.addEventListener('beforeunload', () => {
-    const mainStore = useMainStore()
     mainStore.startLoading()
   })
 
-  const i18n = localization.init()
-
-  const pinia = createPinia()
-
-  // Create a temporary app to initialize Pinia so stores can be used before mount
-  const tempApp = createApp({})
-  tempApp.use(pinia)
-
   const userStore = useUserStore()
   userStore.refreshAuth()
+
+  const i18n = localization.init()
 
   let darkModeEnabled = siteConfig.darkMode
   if ((userStore.appearance || '').length > 0) {
@@ -185,6 +189,7 @@ let bootstrap = () => {
   app.use(vuetify)
   app.use(i18n)
   app.use(helpers)
+  app.use(compatStorePlugin)
 
   // Provide Apollo client
   app.provide(DefaultApolloClient, window.graphQL)
@@ -192,6 +197,7 @@ let bootstrap = () => {
   // Global properties
   app.config.globalProperties.Velocity = Velocity
   app.config.globalProperties.$moment = moment
+  app.config.globalProperties.$eventBus = eventBus
 
   // ====================================
   // Register Vue Components (async)

@@ -63,7 +63,7 @@
             hide-default-footer
             @page-count="pageTotal = $event"
           )
-            template(slot='item', slot-scope='props')
+            template(#item='props')
               tr.is-clickable(:active='props.selected', @click='$router.push(`/pages/` + props.item.id)')
                 td.text-xs-right {{ props.item.id }}
                 td

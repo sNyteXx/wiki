@@ -246,7 +246,6 @@
 
 <script>
 import _ from 'lodash'
-import { sync, get } from 'vuex-pathify'
 import gql from 'graphql-tag'
 
 import CodeMirror from 'codemirror'

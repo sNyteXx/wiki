@@ -131,7 +131,6 @@
 import _ from 'lodash'
 import gql from 'graphql-tag'
 import { v4 as uuid } from 'uuid'
-import { get, sync } from 'vuex-pathify'
 
 export default {
   data() {

@@ -167,7 +167,6 @@
 
 <script>
 import _ from 'lodash'
-import { get, sync } from 'vuex-pathify'
 import markdownHelp from './markdown/help.vue'
 import gql from 'graphql-tag'
 import DOMPurify from 'dompurify'
@@ -1110,7 +1109,7 @@ export default {
     this.processContent(this.$store.get('editor/content'))
     this.refresh()
 
-    this.$root.$on('editorInsert', opts => {
+    this.$eventBus.$on('editorInsert', opts => {
       switch (opts.kind) {
         case 'IMAGE':
           let img = `![${opts.text}](${opts.path})`
@@ -1136,15 +1135,15 @@ export default {
     })
 
     // Handle save conflict
-    this.$root.$on('saveConflict', () => {
+    this.$eventBus.$on('saveConflict', () => {
       this.toggleModal(`editorModalConflict`)
     })
-    this.$root.$on('overwriteEditorContent', () => {
+    this.$eventBus.$on('overwriteEditorContent', () => {
       this.cm.setValue(this.$store.get('editor/content'))
     })
   },
-  beforeDestroy() {
-    this.$root.$off('editorInsert')
+  beforeUnmount() {
+    this.$eventBus.$off('editorInsert')
   }
 }
 </script>

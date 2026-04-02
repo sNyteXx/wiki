@@ -85,7 +85,6 @@
 <script>
 import _ from 'lodash'
 import gql from 'graphql-tag'
-import { get, sync } from 'vuex-pathify'
 import { OrbitSpinner } from 'epic-spinners'
 
 import searchPagesQuery from 'gql/common/common-pages-query-search.gql'
@@ -173,7 +172,7 @@ export default {
     }
   },
   mounted() {
-    this.$root.$on('searchMove', (dir) => {
+    this.$eventBus.$on('searchMove', (dir) => {
       this.cursor += ((dir === 'up') ? -1 : 1)
       if (this.cursor < -1) {
         this.cursor = -1
@@ -181,7 +180,7 @@ export default {
         this.cursor = this.results.length + this.suggestions.length - 1
       }
     })
-    this.$root.$on('searchEnter', () => {
+    this.$eventBus.$on('searchEnter', () => {
       if (!this.results) {
         return
       }

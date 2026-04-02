@@ -255,7 +255,6 @@
 import _ from 'lodash'
 import Cookies from 'js-cookie'
 import gql from 'graphql-tag'
-import { sync } from 'vuex-pathify'
 
 export default {
   i18nOptions: { namespaces: 'auth' },

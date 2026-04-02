@@ -150,7 +150,6 @@ import _ from 'lodash'
 import gql from 'graphql-tag'
 import MarkdownIt from 'markdown-it'
 import Cookies from 'js-cookie'
-import { get } from 'vuex-pathify'
 
 const md = new MarkdownIt({
   html: false,
@@ -280,7 +279,7 @@ export default {
   created () {
     this.ensureViewerState()
   },
-  beforeDestroy () {
+  beforeUnmount () {
     this.abortActiveStream()
   },
   methods: {

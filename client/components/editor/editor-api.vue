@@ -226,7 +226,6 @@
 <script>
 import _ from 'lodash'
 import { v4 as uuid } from 'uuid'
-import { get, sync } from 'vuex-pathify'
 
 export default {
   data() {
@@ -383,8 +382,8 @@ export default {
       this.$store.set('editor/content', '<h1>Title</h1>\n\n<p>Some text here</p>')
     }
   },
-  beforeDestroy() {
-    this.$root.$off('editorInsert')
+  beforeUnmount() {
+    this.$eventBus.$off('editorInsert')
   }
 }
 </script>

@@ -77,7 +77,6 @@
 <script>
 import _ from 'lodash'
 import gql from 'graphql-tag'
-import { sync, get } from 'vuex-pathify'
 
 /* global siteConfig */
 
@@ -129,8 +128,8 @@ export default {
     },
     overwriteAndClose() {
       this.checkoutDateActive = this.latest.updatedAt
-      this.$root.$emit('overwriteEditorContent')
-      this.$root.$emit('resetEditorConflict')
+      this.$eventBus.$emit('overwriteEditorContent')
+      this.$eventBus.$emit('resetEditorConflict')
       this.close()
     },
     useLocal () {

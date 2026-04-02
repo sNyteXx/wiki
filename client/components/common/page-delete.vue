@@ -26,7 +26,6 @@
 
 <script>
 import _ from 'lodash'
-import { get } from 'vuex-pathify'
 
 import deletePageMutation from 'gql/common/common-pages-mutation-delete.gql'
 
