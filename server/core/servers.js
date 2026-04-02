@@ -2,7 +2,7 @@ const fs = require('fs-extra')
 const http = require('http')
 const https = require('https')
 const { ApolloServer } = require('apollo-server-express')
-const Promise = require('bluebird')
+const { promisify } = require('util')
 const _ = require('lodash')
 const jwt = require('jsonwebtoken')
 const cookie = require('cookie')
@@ -183,11 +183,11 @@ module.exports = {
   async stopServers () {
     this.closeConnections()
     if (this.servers.http) {
-      await Promise.fromCallback(cb => { this.servers.http.close(cb) })
+      await promisify(this.servers.http.close.bind(this.servers.http))()
       this.servers.http = null
     }
     if (this.servers.https) {
-      await Promise.fromCallback(cb => { this.servers.https.close(cb) })
+      await promisify(this.servers.https.close.bind(this.servers.https))()
       this.servers.https = null
     }
     this.servers.graph = null
@@ -200,14 +200,14 @@ module.exports = {
     switch (srv) {
       case 'http':
         if (this.servers.http) {
-          await Promise.fromCallback(cb => { this.servers.http.close(cb) })
+          await promisify(this.servers.http.close.bind(this.servers.http))()
           this.servers.http = null
         }
         this.startHTTP()
         break
       case 'https':
         if (this.servers.https) {
-          await Promise.fromCallback(cb => { this.servers.https.close(cb) })
+          await promisify(this.servers.https.close.bind(this.servers.https))()
           this.servers.https = null
         }
         this.startHTTPS()
