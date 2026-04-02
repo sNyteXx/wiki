@@ -9,6 +9,7 @@ on:
 
 env:
   BASE_DEV_VERSION: 2.5.0
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
 
@@ -41,18 +42,22 @@ jobs:
         rm pkg-temp.json
         cat package.json
 
-    - name: Login to DockerHub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - name: Set GHCR Owner
+      run: |
+        if [ -n "${{ secrets.GHCR_USERNAME }}" ]; then
+          owner="${{ secrets.GHCR_USERNAME }}"
+        else
+          owner="${{ github.repository_owner }}"
+        fi
+        echo "GHCR_OWNER=${owner}" >> $GITHUB_ENV
+        echo "GHCR_OWNER_LC=$(echo ${owner} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+        username: ${{ secrets.GHCR_USERNAME || github.repository_owner }}
+        password: ${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}
 
     - name: Build and push Docker images
       uses: docker/build-push-action@v5
@@ -61,15 +66,13 @@ jobs:
         file: dev/build/Dockerfile
         push: true
         tags: |
-          requarks/wiki:canary
-          requarks/wiki:canary-${{ env.REL_VERSION_STRICT }}
-          ghcr.io/requarks/wiki:canary
-          ghcr.io/requarks/wiki:canary-${{ env.REL_VERSION_STRICT }}
+          ghcr.io/${{ env.GHCR_OWNER_LC }}/wiki:canary
+          ghcr.io/${{ env.GHCR_OWNER_LC }}/wiki:canary-${{ env.REL_VERSION_STRICT }}
 
     - name: Extract compiled files
       run: |
         mkdir -p _dist
-        docker create --name wiki ghcr.io/requarks/wiki:canary-$REL_VERSION_STRICT
+        docker create --name wiki ghcr.io/${GHCR_OWNER_LC}/wiki:canary-$REL_VERSION_STRICT
         docker cp wiki:/wiki _dist
         docker rm wiki
         rm _dist/wiki/config.yml
@@ -103,6 +106,16 @@ jobs:
           echo "Using BRANCH mode: v$BASE_DEV_VERSION-dev.$GITHUB_RUN_NUMBER"
           echo "REL_VERSION_STRICT=$BASE_DEV_VERSION-dev.$GITHUB_RUN_NUMBER" >> $GITHUB_ENV
         fi
+
+    - name: Set GHCR Owner
+      run: |
+        if [ -n "${{ secrets.GHCR_USERNAME }}" ]; then
+          owner="${{ secrets.GHCR_USERNAME }}"
+        else
+          owner="${{ github.repository_owner }}"
+        fi
+        echo "GHCR_OWNER=${owner}" >> $GITHUB_ENV
+        echo "GHCR_OWNER_LC=$(echo ${owner} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
     - name: Run Tests
       env:
@@ -141,24 +154,28 @@ jobs:
           echo "REL_VERSION_STRICT=$BASE_DEV_VERSION-dev.$GITHUB_RUN_NUMBER" >> $GITHUB_ENV
         fi
 
+    - name: Set GHCR Owner
+      run: |
+        if [ -n "${{ secrets.GHCR_USERNAME }}" ]; then
+          owner="${{ secrets.GHCR_USERNAME }}"
+        else
+          owner="${{ github.repository_owner }}"
+        fi
+        echo "GHCR_OWNER=${owner}" >> $GITHUB_ENV
+        echo "GHCR_OWNER_LC=$(echo ${owner} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Login to DockerHub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+        username: ${{ secrets.GHCR_USERNAME || github.repository_owner }}
+        password: ${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}
 
     - name: Download a Build Artifact
       uses: actions/download-artifact@v4
@@ -180,8 +197,7 @@ jobs:
         provenance: false
         push: true
         tags: |
-          requarks/wiki:canary-${{ matrix.docker }}-${{ env.REL_VERSION_STRICT }}
-          ghcr.io/requarks/wiki:canary-${{ matrix.docker }}-${{ env.REL_VERSION_STRICT }}
+            ghcr.io/${{ env.GHCR_OWNER_LC }}/wiki:canary-${{ matrix.docker }}-${{ env.REL_VERSION_STRICT }}
 
   windows:
     name: Windows Build
@@ -240,30 +256,32 @@ jobs:
         echo "Using TAG mode: $GITHUB_REF_NAME"
         echo "REL_VERSION_STRICT=${GITHUB_REF_NAME#?}" >> $GITHUB_ENV
 
-    - name: Login to DockerHub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - name: Set GHCR Owner
+      run: |
+        if [ -n "${{ secrets.GHCR_USERNAME }}" ]; then
+          owner="${{ secrets.GHCR_USERNAME }}"
+        else
+          owner="${{ github.repository_owner }}"
+        fi
+        echo "GHCR_OWNER=${owner}" >> $GITHUB_ENV
+        echo "GHCR_OWNER_LC=$(echo ${owner} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+        username: ${{ secrets.GHCR_USERNAME || github.repository_owner }}
+        password: ${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}
 
     - name: Create and Push Manifests
       run: |
         echo "Creating the manifests..."
 
-        docker manifest create requarks/wiki:beta-$REL_VERSION_STRICT requarks/wiki:canary-$REL_VERSION_STRICT requarks/wiki:canary-arm64-$REL_VERSION_STRICT
-        docker manifest create ghcr.io/requarks/wiki:beta-$REL_VERSION_STRICT ghcr.io/requarks/wiki:canary-$REL_VERSION_STRICT ghcr.io/requarks/wiki:canary-arm64-$REL_VERSION_STRICT
+        docker manifest create ghcr.io/${GHCR_OWNER_LC}/wiki:beta-$REL_VERSION_STRICT ghcr.io/${GHCR_OWNER_LC}/wiki:canary-$REL_VERSION_STRICT ghcr.io/${GHCR_OWNER_LC}/wiki:canary-arm64-$REL_VERSION_STRICT
 
         echo "Pushing the manifests..."
 
-        docker manifest push -p requarks/wiki:beta-$REL_VERSION_STRICT
-        docker manifest push -p ghcr.io/requarks/wiki:beta-$REL_VERSION_STRICT
+        docker manifest push -p ghcr.io/${GHCR_OWNER_LC}/wiki:beta-$REL_VERSION_STRICT
 
   release:
     name: Publish Release Images
@@ -281,18 +299,22 @@ jobs:
         echo "Using TAG mode: $GITHUB_REF_NAME"
         echo "REL_VERSION_STRICT=${GITHUB_REF_NAME#?}" >> $GITHUB_ENV
 
-    - name: Login to DockerHub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - name: Set GHCR Owner
+      run: |
+        if [ -n "${{ secrets.GHCR_USERNAME }}" ]; then
+          owner="${{ secrets.GHCR_USERNAME }}"
+        else
+          owner="${{ github.repository_owner }}"
+        fi
+        echo "GHCR_OWNER=${owner}" >> $GITHUB_ENV
+        echo "GHCR_OWNER_LC=$(echo ${owner} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+        username: ${{ secrets.GHCR_USERNAME || github.repository_owner }}
+        password: ${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}
 
     - name: Create and Push Manifests
       run: |
@@ -307,25 +329,17 @@ jobs:
         echo "Using major $MAJOR and minor $MINOR..."
         echo "Creating the manifests..."
 
-        docker manifest create requarks/wiki:$REL_VERSION_STRICT requarks/wiki:canary-$REL_VERSION_STRICT requarks/wiki:canary-arm64-$REL_VERSION_STRICT
-        docker manifest create requarks/wiki:$MAJOR requarks/wiki:canary-$REL_VERSION_STRICT requarks/wiki:canary-arm64-$REL_VERSION_STRICT
-        docker manifest create requarks/wiki:$MAJORMINOR requarks/wiki:canary-$REL_VERSION_STRICT requarks/wiki:canary-arm64-$REL_VERSION_STRICT
-        docker manifest create requarks/wiki:latest requarks/wiki:canary-$REL_VERSION_STRICT requarks/wiki:canary-arm64-$REL_VERSION_STRICT
-        docker manifest create ghcr.io/requarks/wiki:$REL_VERSION_STRICT ghcr.io/requarks/wiki:canary-$REL_VERSION_STRICT ghcr.io/requarks/wiki:canary-arm64-$REL_VERSION_STRICT
-        docker manifest create ghcr.io/requarks/wiki:$MAJOR ghcr.io/requarks/wiki:canary-$REL_VERSION_STRICT ghcr.io/requarks/wiki:canary-arm64-$REL_VERSION_STRICT
-        docker manifest create ghcr.io/requarks/wiki:$MAJORMINOR ghcr.io/requarks/wiki:canary-$REL_VERSION_STRICT ghcr.io/requarks/wiki:canary-arm64-$REL_VERSION_STRICT
-        docker manifest create ghcr.io/requarks/wiki:latest ghcr.io/requarks/wiki:canary-$REL_VERSION_STRICT ghcr.io/requarks/wiki:canary-arm64-$REL_VERSION_STRICT
+        docker manifest create ghcr.io/${GHCR_OWNER_LC}/wiki:$REL_VERSION_STRICT ghcr.io/${GHCR_OWNER_LC}/wiki:canary-$REL_VERSION_STRICT ghcr.io/${GHCR_OWNER_LC}/wiki:canary-arm64-$REL_VERSION_STRICT
+        docker manifest create ghcr.io/${GHCR_OWNER_LC}/wiki:$MAJOR ghcr.io/${GHCR_OWNER_LC}/wiki:canary-$REL_VERSION_STRICT ghcr.io/${GHCR_OWNER_LC}/wiki:canary-arm64-$REL_VERSION_STRICT
+        docker manifest create ghcr.io/${GHCR_OWNER_LC}/wiki:$MAJORMINOR ghcr.io/${GHCR_OWNER_LC}/wiki:canary-$REL_VERSION_STRICT ghcr.io/${GHCR_OWNER_LC}/wiki:canary-arm64-$REL_VERSION_STRICT
+        docker manifest create ghcr.io/${GHCR_OWNER_LC}/wiki:latest ghcr.io/${GHCR_OWNER_LC}/wiki:canary-$REL_VERSION_STRICT ghcr.io/${GHCR_OWNER_LC}/wiki:canary-arm64-$REL_VERSION_STRICT
 
         echo "Pushing the manifests..."
 
-        docker manifest push -p requarks/wiki:$REL_VERSION_STRICT
-        docker manifest push -p requarks/wiki:$MAJOR
-        docker manifest push -p requarks/wiki:$MAJORMINOR
-        docker manifest push -p requarks/wiki:latest
-        docker manifest push -p ghcr.io/requarks/wiki:$REL_VERSION_STRICT
-        docker manifest push -p ghcr.io/requarks/wiki:$MAJOR
-        docker manifest push -p ghcr.io/requarks/wiki:$MAJORMINOR
-        docker manifest push -p ghcr.io/requarks/wiki:latest
+        docker manifest push -p ghcr.io/${GHCR_OWNER_LC}/wiki:$REL_VERSION_STRICT
+        docker manifest push -p ghcr.io/${GHCR_OWNER_LC}/wiki:$MAJOR
+        docker manifest push -p ghcr.io/${GHCR_OWNER_LC}/wiki:$MAJORMINOR
+        docker manifest push -p ghcr.io/${GHCR_OWNER_LC}/wiki:latest
 
     - name: Download Linux Build
       uses: actions/download-artifact@v4
@@ -404,11 +418,3 @@ jobs:
   #       curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
   #       sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
   #       sudo apt-get update && sudo apt-get install packer
-
-  #   - name: Build Droplet Image
-  #     env:
-  #       DIGITALOCEAN_API_TOKEN: ${{ secrets.DO_TOKEN }}
-  #       WIKI_APP_VERSION: ${{ env.REL_VERSION_STRICT }}
-  #     working-directory: dev/packer
-  #     run: |
-  #       packer build digitalocean.json
