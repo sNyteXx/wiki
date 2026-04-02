@@ -132,7 +132,6 @@
 <script>
 import _ from 'lodash'
 import VueRouter from 'vue-router'
-import { get, sync } from 'vuex-pathify'
 
 import statsQuery from 'gql/admin/dashboard/dashboard-query-stats.gql'
 

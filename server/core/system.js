@@ -1,6 +1,5 @@
 const _ = require('lodash')
 const cfgHelper = require('../helpers/config')
-const Promise = require('bluebird')
 const fs = require('fs-extra')
 const path = require('path')
 const zlib = require('zlib')

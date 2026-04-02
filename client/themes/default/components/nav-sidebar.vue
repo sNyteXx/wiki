@@ -30,7 +30,7 @@
     v-divider
     //-> Custom Navigation
     v-list.py-2(v-if='currentMode === `custom`', dense, :class='color', :dark='dark')
-      template(v-for='item of items')
+      template(v-for='item of items', :key='item')
         v-list-item(
           v-if='item.k === `link`'
           :href='item.t'
@@ -95,10 +95,10 @@
           hoverable
           dense
           )
-          template(slot='prepend', slot-scope='{ item, open }')
+          template(#prepend='{ item, open }')
             v-icon(v-if='item.isFolder', small) mdi-{{ open ? 'folder-open' : 'folder' }}
             v-icon(v-else, small) mdi-text-box
-          template(slot='label', slot-scope='{ item }')
+          template(#label='{ item }')
             .sidebar-tree-label(
               :class='{"is-current-page": isCurrentPageNode(item), "is-current-path": isCurrentPathNode(item)}'
               :data-tree-node='item.id'
@@ -109,7 +109,6 @@
 <script>
 import _ from 'lodash'
 import gql from 'graphql-tag'
-import { get } from 'vuex-pathify'
 
 /* global siteLangs */
 
@@ -361,7 +360,7 @@ export default {
     },
     registerTreeNodes (nodes) {
       _.forEach(nodes, node => {
-        this.$set(this.nodeIndexById, node.id, node)
+        this.nodeIndexById[node.id] = node
         if (_.isArray(node.children) && node.children.length > 0) {
           this.registerTreeNodes(node.children)
         }
@@ -509,10 +508,10 @@ export default {
         const items = this.filterTreeEntries(_.get(resp, 'data.pages.tree', []))
         const children = _.map(items, entry => this.buildTreeNode(entry))
         if (children.length > 0) {
-          this.$set(item, 'children', children)
+          item['children'] = children
           this.registerTreeNodes(children)
         } else {
-          this.$set(item, 'children', undefined)
+          item['children'] = undefined
         }
         this.loadedFolderIds = _.union(this.loadedFolderIds, [item.id])
         return children
@@ -699,7 +698,7 @@ export default {
       this.initializeBrowseTree()
     }
   },
-  beforeDestroy () {
+  beforeUnmount () {
     if (this.performSearchDebounced && _.isFunction(this.performSearchDebounced.cancel)) {
       this.performSearchDebounced.cancel()
     }

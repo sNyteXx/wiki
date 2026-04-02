@@ -41,7 +41,7 @@
                 activatable
                 hoverable
                 )
-                template(slot='prepend', slot-scope='{ item, open, leaf }')
+                template(#prepend='{ item, open, leaf }')
                   v-icon mdi-{{ open ? 'folder-open' : 'folder' }}
         v-flex(xs7)
           v-toolbar(color='blue darken-2', dark, dense, flat)
@@ -56,8 +56,8 @@
                   v-model='currentPage'
                   color='primary'
                   )
-                  template(v-for='(page, idx) of currentPages')
-                    v-list-item(:key='`page-` + page.id', :value='page')
+                  template(v-for='(page, idx) of currentPages', :key='idx')
+                    v-list-item(, :value='page')
                       v-list-item-icon: v-icon mdi-text-box
                       v-list-item-title {{page.title}}
                     v-divider(v-if='idx < pages.length - 1')

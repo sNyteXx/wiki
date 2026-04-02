@@ -135,7 +135,6 @@
 
 <script>
 import gql from 'graphql-tag'
-import { get } from 'vuex-pathify'
 import validate from 'validate.js'
 import _ from 'lodash'
 

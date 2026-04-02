@@ -24,8 +24,8 @@
           v-toolbar(flat, color='primary', dark, dense)
             .subtitle-1 {{$t('admin:search.searchEngine')}}
           v-list.py-0(two-line, dense)
-            template(v-for='(eng, idx) in engines')
-              v-list-item(:key='eng.key', @click='selectedEngine = eng.key', :disabled='!eng.isAvailable')
+            template(v-for='(eng, idx) in engines', :key='idx')
+              v-list-item(, @click='selectedEngine = eng.key', :disabled='!eng.isAvailable')
                 v-list-item-avatar(size='24')
                   v-icon(color='grey', v-if='!eng.isAvailable') mdi-minus-box-outline
                   v-icon(color='primary', v-else-if='eng.key === selectedEngine') mdi-checkbox-marked-circle-outline

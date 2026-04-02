@@ -31,7 +31,7 @@
                     persistent-hint
                     :hint='$t("admin:locale.base.hint")'
                   )
-                    template(slot='item', slot-scope='data')
+                    template(#item='data')
                       template(v-if='typeof data.item !== "object"')
                         v-list-item-content(v-text='data.item')
                       template(v-else)
@@ -87,7 +87,7 @@
                     small-chips
                     :hint='$t("admin:locale.activeNamespaces.hint")'
                     )
-                    template(slot='item', slot-scope='data')
+                    template(#item='data')
                       template(v-if='typeof data.item !== "object"')
                         v-list-item-content(v-text='data.item')
                       template(v-else)

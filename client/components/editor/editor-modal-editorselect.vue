@@ -62,7 +62,6 @@
 
 <script>
 import _ from 'lodash'
-import { sync, get } from 'vuex-pathify'
 
 export default {
   props: {

@@ -1,8 +1,7 @@
 /* global siteConfig */
 
-import Vue from 'vue'
-import VueRouter from 'vue-router'
-import VueClipboards from 'vue-clipboards'
+import { createApp, defineAsyncComponent } from 'vue'
+import { createPinia } from 'pinia'
 import { ApolloClient } from 'apollo-client'
 import { BatchHttpLink } from 'apollo-link-batch-http'
 import { ApolloLink, split } from 'apollo-link'
@@ -10,15 +9,17 @@ import { WebSocketLink } from 'apollo-link-ws'
 import { ErrorLink } from 'apollo-link-error'
 import { InMemoryCache } from 'apollo-cache-inmemory'
 import { getMainDefinition } from 'apollo-utilities'
-import VueApollo from 'vue-apollo'
-import Vuetify from 'vuetify/lib'
+import apolloPlugin from './libs/apollo-plugin'
+import { createVuetify } from 'vuetify'
 import Velocity from 'velocity-animate'
-import Vuescroll from 'vuescroll/dist/vuescroll-native'
-import Hammer from 'hammerjs'
 import moment from 'moment-timezone'
-import VueMoment from 'vue-moment'
-import store from './store'
 import Cookies from 'js-cookie'
+
+import { useMainStore } from './store'
+import { useUserStore } from './store/user'
+import compatStorePlugin from './libs/compat-store'
+import eventBus from './libs/event-bus'
+import VueScroll from './libs/vuescroll-stub'
 
 // ====================================
 // Load Modules
@@ -39,11 +40,9 @@ import helpers from './helpers'
 
 window.WIKI = null
 window.boot = boot
-window.Hammer = Hammer
+window.eventBus = eventBus
 
 moment.locale(siteConfig.lang)
-
-store.commit('user/REFRESH_AUTH')
 
 // ====================================
 // Initialize Apollo Client (GraphQL)
@@ -62,7 +61,8 @@ const graphQLLink = ApolloLink.from([
         }
         console.error(`[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`)
       })
-      store.commit('showNotification', {
+      const mainStore = useMainStore()
+      mainStore.showNotification({
         style: 'red',
         message: isAuthError ? `You are not authorized to access this resource.` : `An unexpected error occurred.`,
         icon: 'alert'
@@ -70,7 +70,8 @@ const graphQLLink = ApolloLink.from([
     }
     if (networkError) {
       console.error(networkError)
-      store.commit('showNotification', {
+      const mainStore = useMainStore()
+      mainStore.showNotification({
         style: 'red',
         message: `Network Error: ${networkError.message}`,
         icon: 'alert'
@@ -132,102 +133,106 @@ window.graphQL = new ApolloClient({
 })
 
 // ====================================
-// Initialize Vue Modules
+// Bootstrap Vue 3 App
 // ====================================
-
-Vue.config.productionTip = false
-
-Vue.use(VueRouter)
-Vue.use(VueApollo)
-Vue.use(VueClipboards)
-Vue.use(localization.VueI18Next)
-Vue.use(helpers)
-Vue.use(Vuetify)
-Vue.use(VueMoment, { moment })
-Vue.use(Vuescroll)
-
-Vue.prototype.Velocity = Velocity
-
-// ====================================
-// Register Vue Components
-// ====================================
-
-Vue.component('Admin', () => import(/* webpackChunkName: "admin" */ './components/admin.vue'))
-Vue.component('Comments', () => import(/* webpackChunkName: "comments" */ './components/comments.vue'))
-Vue.component('Editor', () => import(/* webpackPrefetch: -100, webpackChunkName: "editor" */ './components/editor.vue'))
-Vue.component('History', () => import(/* webpackChunkName: "history" */ './components/history.vue'))
-Vue.component('Loader', () => import(/* webpackPrefetch: true, webpackChunkName: "ui-extra" */ './components/common/loader.vue'))
-Vue.component('Login', () => import(/* webpackPrefetch: true, webpackChunkName: "login" */ './components/login.vue'))
-Vue.component('NavHeader', () => import(/* webpackMode: "eager" */ './components/common/nav-header.vue'))
-Vue.component('NewPage', () => import(/* webpackChunkName: "new-page" */ './components/new-page.vue'))
-Vue.component('Notify', () => import(/* webpackMode: "eager" */ './components/common/notify.vue'))
-Vue.component('NotFound', () => import(/* webpackChunkName: "not-found" */ './components/not-found.vue'))
-Vue.component('PageSelector', () => import(/* webpackPrefetch: true, webpackChunkName: "ui-extra" */ './components/common/page-selector.vue'))
-Vue.component('PageSource', () => import(/* webpackChunkName: "source" */ './components/source.vue'))
-Vue.component('Profile', () => import(/* webpackChunkName: "profile" */ './components/profile.vue'))
-Vue.component('Register', () => import(/* webpackChunkName: "register" */ './components/register.vue'))
-Vue.component('SearchResults', () => import(/* webpackPrefetch: true, webpackChunkName: "ui-extra" */ './components/common/search-results.vue'))
-Vue.component('SocialSharing', () => import(/* webpackPrefetch: true, webpackChunkName: "ui-extra" */ './components/common/social-sharing.vue'))
-Vue.component('Tags', () => import(/* webpackChunkName: "tags" */ './components/tags.vue'))
-Vue.component('Unauthorized', () => import(/* webpackChunkName: "unauthorized" */ './components/unauthorized.vue'))
-Vue.component('VCardChin', () => import(/* webpackPrefetch: true, webpackChunkName: "ui-extra" */ './components/common/v-card-chin.vue'))
-Vue.component('VCardInfo', () => import(/* webpackPrefetch: true, webpackChunkName: "ui-extra" */ './components/common/v-card-info.vue'))
-Vue.component('Welcome', () => import(/* webpackChunkName: "welcome" */ './components/welcome.vue'))
-
-Vue.component('NavFooter', () => import(/* webpackChunkName: "theme" */ './themes/' + siteConfig.theme + '/components/nav-footer.vue'))
-Vue.component('Page', () => import(/* webpackChunkName: "theme" */ './themes/' + siteConfig.theme + '/components/page.vue'))
 
 let bootstrap = () => {
-  // ====================================
-  // Notifications
-  // ====================================
+  const pinia = createPinia()
+
+  // Create a temporary app to initialize Pinia before mount
+  const initApp = createApp({ render: () => null })
+  initApp.use(pinia)
+
+  const mainStore = useMainStore()
 
   window.addEventListener('beforeunload', () => {
-    store.dispatch('startLoading')
+    mainStore.startLoading()
   })
 
-  const apolloProvider = new VueApollo({
-    defaultClient: window.graphQL
-  })
-
-  // ====================================
-  // Bootstrap Vue
-  // ====================================
+  const userStore = useUserStore()
+  userStore.refreshAuth()
 
   const i18n = localization.init()
 
   let darkModeEnabled = siteConfig.darkMode
-  if ((store.get('user/appearance') || '').length > 0) {
-    darkModeEnabled = (store.get('user/appearance') === 'dark')
+  if ((userStore.appearance || '').length > 0) {
+    darkModeEnabled = (userStore.appearance === 'dark')
   }
 
-  window.WIKI = new Vue({
-    el: '#root',
-    components: {},
-    mixins: [helpers],
-    apolloProvider,
-    store,
-    i18n,
-    vuetify: new Vuetify({
-      rtl: siteConfig.rtl,
-      theme: {
-        dark: darkModeEnabled
-      }
-    }),
-    mounted () {
-      this.$moment.locale(siteConfig.lang)
-      if ((store.get('user/dateFormat') || '').length > 0) {
-        this.$moment.updateLocale(this.$moment.locale(), {
-          longDateFormat: {
-            'L': store.get('user/dateFormat')
-          }
-        })
-      }
-      if ((store.get('user/timezone') || '').length > 0) {
-        this.$moment.tz.setDefault(store.get('user/timezone'))
+  const vuetify = createVuetify({
+    theme: {
+      defaultTheme: darkModeEnabled ? 'dark' : 'light'
+    },
+    defaults: {
+      global: {
+        ripple: true
       }
     }
   })
+
+  const app = createApp({
+    mounted () {
+      moment.locale(siteConfig.lang)
+      if ((userStore.dateFormat || '').length > 0) {
+        moment.updateLocale(moment.locale(), {
+          longDateFormat: {
+            'L': userStore.dateFormat
+          }
+        })
+      }
+      if ((userStore.timezone || '').length > 0) {
+        moment.tz.setDefault(userStore.timezone)
+      }
+    }
+  })
+
+  app.use(pinia)
+  app.use(vuetify)
+  app.use(i18n)
+  app.use(helpers)
+  app.use(compatStorePlugin)
+
+  // Provide Apollo client
+  app.use(apolloPlugin, { apolloClient: window.graphQL })
+
+  // Global properties
+  app.config.globalProperties.Velocity = Velocity
+  app.config.globalProperties.$moment = moment
+  app.config.globalProperties.$eventBus = eventBus
+
+  // ====================================
+  // Register Vue Components (async)
+  // ====================================
+
+  app.component('Admin', defineAsyncComponent(() => import(/* webpackChunkName: "admin" */ './components/admin.vue')))
+  app.component('Comments', defineAsyncComponent(() => import(/* webpackChunkName: "comments" */ './components/comments.vue')))
+  app.component('Editor', defineAsyncComponent(() => import(/* webpackPrefetch: -100, webpackChunkName: "editor" */ './components/editor.vue')))
+  app.component('History', defineAsyncComponent(() => import(/* webpackChunkName: "history" */ './components/history.vue')))
+  app.component('Loader', defineAsyncComponent(() => import(/* webpackPrefetch: true, webpackChunkName: "ui-extra" */ './components/common/loader.vue')))
+  app.component('Login', defineAsyncComponent(() => import(/* webpackPrefetch: true, webpackChunkName: "login" */ './components/login.vue')))
+  app.component('NavHeader', defineAsyncComponent(() => import(/* webpackMode: "eager" */ './components/common/nav-header.vue')))
+  app.component('NewPage', defineAsyncComponent(() => import(/* webpackChunkName: "new-page" */ './components/new-page.vue')))
+  app.component('Notify', defineAsyncComponent(() => import(/* webpackMode: "eager" */ './components/common/notify.vue')))
+  app.component('NotFound', defineAsyncComponent(() => import(/* webpackChunkName: "not-found" */ './components/not-found.vue')))
+  app.component('PageSelector', defineAsyncComponent(() => import(/* webpackPrefetch: true, webpackChunkName: "ui-extra" */ './components/common/page-selector.vue')))
+  app.component('PageSource', defineAsyncComponent(() => import(/* webpackChunkName: "source" */ './components/source.vue')))
+  app.component('Profile', defineAsyncComponent(() => import(/* webpackChunkName: "profile" */ './components/profile.vue')))
+  app.component('Register', defineAsyncComponent(() => import(/* webpackChunkName: "register" */ './components/register.vue')))
+  app.component('SearchResults', defineAsyncComponent(() => import(/* webpackPrefetch: true, webpackChunkName: "ui-extra" */ './components/common/search-results.vue')))
+  app.component('SocialSharing', defineAsyncComponent(() => import(/* webpackPrefetch: true, webpackChunkName: "ui-extra" */ './components/common/social-sharing.vue')))
+  app.component('Tags', defineAsyncComponent(() => import(/* webpackChunkName: "tags" */ './components/tags.vue')))
+  app.component('Unauthorized', defineAsyncComponent(() => import(/* webpackChunkName: "unauthorized" */ './components/unauthorized.vue')))
+  app.component('VCardChin', defineAsyncComponent(() => import(/* webpackPrefetch: true, webpackChunkName: "ui-extra" */ './components/common/v-card-chin.vue')))
+  app.component('VCardInfo', defineAsyncComponent(() => import(/* webpackPrefetch: true, webpackChunkName: "ui-extra" */ './components/common/v-card-info.vue')))
+  app.component('Welcome', defineAsyncComponent(() => import(/* webpackChunkName: "welcome" */ './components/welcome.vue')))
+
+  app.component('NavFooter', defineAsyncComponent(() => import(/* webpackChunkName: "theme" */ './themes/' + siteConfig.theme + '/components/nav-footer.vue')))
+  app.component('Page', defineAsyncComponent(() => import(/* webpackChunkName: "theme" */ './themes/' + siteConfig.theme + '/components/page.vue')))
+
+  // Register vuescroll replacement
+  app.component('VueScroll', VueScroll)
+
+  window.WIKI = app.mount('#root')
 
   // ----------------------------------
   // Dispatch boot ready

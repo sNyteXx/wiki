@@ -10,19 +10,14 @@ const CopyWebpackPlugin = require('copy-webpack-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 const HtmlWebpackPugPlugin = require('html-webpack-pug-plugin')
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')
+const CssMinimizerPlugin = require('css-minimizer-webpack-plugin')
 const MomentTimezoneDataPlugin = require('moment-timezone-data-webpack-plugin')
-const OptimizeCssAssetsPlugin = require('optimize-css-assets-webpack-plugin')
-const ScriptExtHtmlWebpackPlugin = require('script-ext-html-webpack-plugin')
-const VuetifyLoaderPlugin = require('vuetify-loader/lib/plugin')
 const WebpackBarPlugin = require('webpackbar')
 
 const now = Math.round(Date.now() / 1000)
 
 const babelConfig = fs.readJsonSync(path.join(process.cwd(), '.babelrc'))
-const cacheDir = '.webpack-cache/cache'
 const babelDir = path.join(process.cwd(), '.webpack-cache/babel')
-
-process.noDeprecation = true
 
 fs.emptyDirSync(path.join(process.cwd(), 'assets'))
 
@@ -39,7 +34,8 @@ module.exports = {
     filename: `js/[name].js?${now}`,
     chunkFilename: `js/[name].js?${now}`,
     globalObject: 'this',
-    crossOriginLoading: 'use-credentials'
+    crossOriginLoading: 'use-credentials',
+    hashFunction: 'xxhash64'
   },
   module: {
     rules: [
@@ -49,12 +45,6 @@ module.exports = {
           return modulePath.includes('node_modules') && !modulePath.includes('vuetify')
         },
         use: [
-          {
-            loader: 'cache-loader',
-            options: {
-              cacheDirectory: cacheDir
-            }
-          },
           {
             loader: 'babel-loader',
             options: {
@@ -67,7 +57,6 @@ module.exports = {
       {
         test: /\.css$/,
         use: [
-          'style-loader',
           MiniCssExtractPlugin.loader,
           'css-loader',
           'postcss-loader'
@@ -76,23 +65,13 @@ module.exports = {
       {
         test: /\.sass$/,
         use: [
-          {
-            loader: 'cache-loader',
-            options: {
-              cacheDirectory: cacheDir
-            }
-          },
-          'style-loader',
+          MiniCssExtractPlugin.loader,
           'css-loader',
           'postcss-loader',
           {
             loader: 'sass-loader',
             options: {
-              implementation: require('sass'),
-              sourceMap: false,
-              sassOptions: {
-                fiber: false
-              }
+              sourceMap: false
             }
           }
         ]
@@ -100,24 +79,13 @@ module.exports = {
       {
         test: /\.scss$/,
         use: [
-          {
-            loader: 'cache-loader',
-            options: {
-              cacheDirectory: cacheDir
-            }
-          },
-          'style-loader',
           MiniCssExtractPlugin.loader,
           'css-loader',
           'postcss-loader',
           {
             loader: 'sass-loader',
             options: {
-              implementation: require('sass'),
-              sourceMap: false,
-              sassOptions: {
-                fiber: false
-              }
+              sourceMap: false
             }
           },
           {
@@ -141,29 +109,22 @@ module.exports = {
       },
       {
         test: /\.(png|jpg|gif)$/,
-        use: [
-          {
-            loader: 'url-loader',
-            options: {
-              limit: 8192
-            }
+        type: 'asset',
+        parser: {
+          dataUrlCondition: {
+            maxSize: 8192
           }
-        ]
+        }
       },
       {
         test: /\.svg$/,
         exclude: [
           path.join(process.cwd(), 'node_modules/grapesjs')
         ],
-        use: [
-          {
-            loader: 'file-loader',
-            options: {
-              name: '[name].[ext]',
-              outputPath: 'svg/'
-            }
-          }
-        ]
+        type: 'asset/resource',
+        generator: {
+          filename: 'svg/[name][ext]'
+        }
       },
       {
         test: /\.(graphql|gql)$/,
@@ -175,13 +136,10 @@ module.exports = {
       },
       {
         test: /\.(woff2|woff|ttf|eot)(\?v=\d+\.\d+\.\d+)?$/,
-        use: [{
-          loader: 'file-loader',
-          options: {
-            name: '[name].[ext]',
-            outputPath: 'fonts/'
-          }
-        }]
+        type: 'asset/resource',
+        generator: {
+          filename: 'fonts/[name][ext]'
+        }
       },
       {
         loader: 'webpack-modernizr-loader',
@@ -191,7 +149,6 @@ module.exports = {
   },
   plugins: [
     new VueLoaderPlugin(),
-    new VuetifyLoaderPlugin(),
     new webpack.BannerPlugin('Wiki.js - wiki.js.org - Licensed under AGPL'),
     new MomentTimezoneDataPlugin({
       startYear: 2017,
@@ -204,8 +161,8 @@ module.exports = {
       ]
     }),
     new MiniCssExtractPlugin({
-      filename: 'css/bundle.[hash].css',
-      chunkFilename: 'css/[name].[chunkhash].css'
+      filename: 'css/bundle.[contenthash].css',
+      chunkFilename: 'css/[name].[contenthash].css'
     }),
     new HtmlWebpackPlugin({
       template: 'dev/templates/master.pug',
@@ -229,29 +186,27 @@ module.exports = {
       excludeChunks: ['app', 'legacy']
     }),
     new HtmlWebpackPugPlugin(),
-    new ScriptExtHtmlWebpackPlugin({
-      sync: 'runtime.js',
-      defaultAttribute: 'async'
-    }),
     new WebpackBarPlugin({
       name: 'Client Assets'
     }),
     new CleanWebpackPlugin(),
-    new OptimizeCssAssetsPlugin({
-      cssProcessorOptions: { discardComments: { removeAll: true } },
-      canPrint: true
-    }),
     new webpack.DefinePlugin({
       'process.env.NODE_ENV': JSON.stringify('production'),
-      'process.env.CURRENT_THEME': JSON.stringify(_.defaultTo(yargs.theme, 'default'))
+      'process.env.CURRENT_THEME': JSON.stringify(_.defaultTo(yargs.theme, 'default')),
+      __VUE_OPTIONS_API__: true,
+      __VUE_PROD_DEVTOOLS__: false
     }),
     new webpack.optimize.MinChunkSizePlugin({
       minChunkSize: 50000
     })
   ],
   optimization: {
-    namedModules: true,
-    namedChunks: true,
+    moduleIds: 'named',
+    chunkIds: 'named',
+    minimizer: [
+      '...',
+      new CssMinimizerPlugin()
+    ],
     splitChunks: {
       name: 'vendor',
       minChunks: 2
@@ -263,8 +218,10 @@ module.exports = {
     symlinks: true,
     alias: {
       '@': path.join(process.cwd(), 'client'),
-      'vue$': 'vue/dist/vue.esm.js',
+      'vue$': 'vue/dist/vue.esm-bundler.js',
       'gql': path.join(process.cwd(), 'client/graph'),
+      'animated-number-vue': path.join(process.cwd(), 'client/libs/animated-number-stub.js'),
+      'vue-filepond': path.join(process.cwd(), 'client/libs/filepond-stub.js'),
       // Duplicates fixes:
       'apollo-link': path.join(process.cwd(), 'node_modules/apollo-link'),
       'apollo-utilities': path.join(process.cwd(), 'node_modules/apollo-utilities'),
@@ -278,10 +235,13 @@ module.exports = {
     ],
     modules: [
       'node_modules'
-    ]
-  },
-  node: {
-    fs: 'empty'
+    ],
+    fallback: {
+      fs: false,
+      stream: false,
+      crypto: false,
+      path: false
+    }
   },
   stats: {
     children: false,

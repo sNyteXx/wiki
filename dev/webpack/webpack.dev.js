@@ -9,15 +9,10 @@ const CopyWebpackPlugin = require('copy-webpack-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 const HtmlWebpackPugPlugin = require('html-webpack-pug-plugin')
 const MomentTimezoneDataPlugin = require('moment-timezone-data-webpack-plugin')
-const VuetifyLoaderPlugin = require('vuetify-loader/lib/plugin')
-const WriteFilePlugin = require('write-file-webpack-plugin')
 const WebpackBarPlugin = require('webpackbar')
 
 const babelConfig = fs.readJsonSync(path.join(process.cwd(), '.babelrc'))
-const cacheDir = '.webpack-cache/cache'
 const babelDir = path.join(process.cwd(), '.webpack-cache/babel')
-
-process.noDeprecation = true
 
 fs.emptyDirSync(path.join(process.cwd(), 'assets'))
 
@@ -46,12 +41,6 @@ module.exports = {
         },
         use: [
           {
-            loader: 'cache-loader',
-            options: {
-              cacheDirectory: cacheDir
-            }
-          },
-          {
             loader: 'babel-loader',
             options: {
               ...babelConfig,
@@ -71,23 +60,13 @@ module.exports = {
       {
         test: /\.sass$/,
         use: [
-          {
-            loader: 'cache-loader',
-            options: {
-              cacheDirectory: cacheDir
-            }
-          },
           'style-loader',
           'css-loader',
           'postcss-loader',
           {
             loader: 'sass-loader',
             options: {
-              implementation: require('sass'),
-              sourceMap: false,
-              sassOptions: {
-                fiber: false
-              }
+              sourceMap: false
             }
           }
         ]
@@ -95,23 +74,13 @@ module.exports = {
       {
         test: /\.scss$/,
         use: [
-          {
-            loader: 'cache-loader',
-            options: {
-              cacheDirectory: cacheDir
-            }
-          },
           'style-loader',
           'css-loader',
           'postcss-loader',
           {
             loader: 'sass-loader',
             options: {
-              implementation: require('sass'),
-              sourceMap: false,
-              sassOptions: {
-                fiber: false
-              }
+              sourceMap: false
             }
           },
           {
@@ -135,29 +104,22 @@ module.exports = {
       },
       {
         test: /\.(png|jpg|gif)$/,
-        use: [
-          {
-            loader: 'url-loader',
-            options: {
-              limit: 8192
-            }
+        type: 'asset',
+        parser: {
+          dataUrlCondition: {
+            maxSize: 8192
           }
-        ]
+        }
       },
       {
         test: /\.svg$/,
         exclude: [
           path.join(process.cwd(), 'node_modules/grapesjs')
         ],
-        use: [
-          {
-            loader: 'file-loader',
-            options: {
-              name: '[name].[ext]',
-              outputPath: 'svg/'
-            }
-          }
-        ]
+        type: 'asset/resource',
+        generator: {
+          filename: 'svg/[name][ext]'
+        }
       },
       {
         test: /\.(graphql|gql)$/,
@@ -169,13 +131,10 @@ module.exports = {
       },
       {
         test: /\.(woff2|woff|ttf|eot)(\?v=\d+\.\d+\.\d+)?$/,
-        use: [{
-          loader: 'file-loader',
-          options: {
-            name: '[name].[ext]',
-            outputPath: 'fonts/'
-          }
-        }]
+        type: 'asset/resource',
+        generator: {
+          filename: 'fonts/[name][ext]'
+        }
       },
       {
         loader: 'webpack-modernizr-loader',
@@ -185,7 +144,6 @@ module.exports = {
   },
   plugins: [
     new VueLoaderPlugin(),
-    new VuetifyLoaderPlugin(),
     new MomentTimezoneDataPlugin({
       startYear: 2017,
       endYear: (new Date().getFullYear()) + 5
@@ -223,17 +181,16 @@ module.exports = {
     }),
     new webpack.DefinePlugin({
       'process.env.NODE_ENV': JSON.stringify('development'),
-      'process.env.CURRENT_THEME': JSON.stringify(_.defaultTo(yargs.theme, 'default'))
+      'process.env.CURRENT_THEME': JSON.stringify(_.defaultTo(yargs.theme, 'default')),
+      __VUE_OPTIONS_API__: true,
+      __VUE_PROD_DEVTOOLS__: false
     }),
-    new WriteFilePlugin(),
     new webpack.HotModuleReplacementPlugin(),
-    new webpack.WatchIgnorePlugin([
-      /node_modules/
-    ])
+    new webpack.WatchIgnorePlugin({ paths: [/node_modules/] })
   ],
   optimization: {
-    namedModules: true,
-    namedChunks: true,
+    moduleIds: 'named',
+    chunkIds: 'named',
     splitChunks: {
       cacheGroups: {
         default: {
@@ -255,7 +212,7 @@ module.exports = {
     symlinks: true,
     alias: {
       '@': path.join(process.cwd(), 'client'),
-      'vue$': 'vue/dist/vue.esm.js',
+      'vue$': 'vue/dist/vue.esm-bundler.js',
       'gql': path.join(process.cwd(), 'client/graph'),
       // Duplicates fixes:
       'apollo-link': path.join(process.cwd(), 'node_modules/apollo-link'),
@@ -270,10 +227,10 @@ module.exports = {
     ],
     modules: [
       'node_modules'
-    ]
-  },
-  node: {
-    fs: 'empty'
+    ],
+    fallback: {
+      fs: false
+    }
   },
   stats: {
     children: false,

@@ -318,8 +318,8 @@
             v-toolbar-title
               .subtitle-1 {{$t('profile:groups.title')}}
           v-list(dense)
-            template(v-for='(grp, idx) of user.groups')
-              v-list-item(:key='`grp-id-` + grp')
+            template(v-for='(grp, idx) of user.groups', :key='idx')
+              v-list-item()
                 v-list-item-avatar(size='32')
                   v-icon mdi-account-group
                 v-list-item-content
@@ -345,7 +345,6 @@
 </template>
 
 <script>
-import { get } from 'vuex-pathify'
 import gql from 'graphql-tag'
 import _ from 'lodash'
 import Cookies from 'js-cookie'

@@ -4,7 +4,6 @@ const path = require('path')
 const mime = require('mime-types')
 const sanitizeFilename = require('sanitize-filename')
 const removeMarkdown = require('remove-markdown')
-const request = require('request')
 const tarFs = require('tar-fs')
 const zlib = require('zlib')
 const { execFile } = require('child_process')
@@ -188,6 +187,31 @@ module.exports = {
   async downloadManagedArchive (archiveUrl, archivePath) {
     await fs.ensureDir(path.dirname(archivePath))
 
+    const abortController = new AbortController()
+    const timeoutId = setTimeout(() => abortController.abort(), MANAGED_PANDOC_DOWNLOAD_TIMEOUT_MS)
+
+    let resp
+    try {
+      resp = await fetch(archiveUrl, {
+        headers: {
+          'User-Agent': `wikijs-pandoc/${MANAGED_PANDOC_VERSION}`
+        },
+        redirect: 'follow',
+        signal: abortController.signal
+      })
+    } catch (err) {
+      clearTimeout(timeoutId)
+      throw new Error(`Der projektlokale Pandoc-Download ist fehlgeschlagen. ${_.toString(err.message || err)}`)
+    }
+    clearTimeout(timeoutId)
+
+    if (!resp.ok) {
+      throw new Error(`Der projektlokale Pandoc-Download ist mit HTTP ${resp.status} fehlgeschlagen.`)
+    }
+
+    const { Readable } = require('stream')
+    const readable = Readable.fromWeb(resp.body)
+
     return new Promise((resolve, reject) => {
       let settled = false
       const output = fs.createWriteStream(archivePath)
@@ -205,26 +229,11 @@ module.exports = {
         }
       }
 
-      const req = request.get({
-        url: archiveUrl,
-        timeout: MANAGED_PANDOC_DOWNLOAD_TIMEOUT_MS,
-        followAllRedirects: true,
-        headers: {
-          'User-Agent': `wikijs-pandoc/${MANAGED_PANDOC_VERSION}`
-        }
-      })
-
-      req.on('response', resp => {
-        if (resp.statusCode !== 200) {
-          req.abort()
-          finalize(new Error(`Der projektlokale Pandoc-Download ist mit HTTP ${resp.statusCode} fehlgeschlagen.`))
-        }
-      })
-      req.on('error', err => finalize(new Error(`Der projektlokale Pandoc-Download ist fehlgeschlagen. ${_.toString(err.message || err)}`)))
+      readable.on('error', err => finalize(new Error(`Der projektlokale Pandoc-Download ist fehlgeschlagen. ${_.toString(err.message || err)}`)))
       output.on('error', err => finalize(new Error(`Das Pandoc-Archiv konnte nicht gespeichert werden. ${_.toString(err.message || err)}`)))
       output.on('finish', () => finalize())
 
-      req.pipe(output)
+      readable.pipe(output)
     })
   },
 

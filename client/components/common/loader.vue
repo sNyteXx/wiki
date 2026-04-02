@@ -1,5 +1,5 @@
 <template lang='pug'>
-  v-dialog(v-model='value', persistent, max-width='350', :overlay-color='color', overlay-opacity='.7')
+  v-dialog(:model-value='modelValue', @update:model-value='$emit("update:modelValue", $event)', persistent, max-width='350', :overlay-color='color', overlay-opacity='.7')
     v-card.loader-dialog.radius-7(:color='color', dark)
       v-card-text.text-center.py-4
         atom-spinner.is-inline(
@@ -21,7 +21,7 @@ export default {
     AtomSpinner
   },
   props: {
-    value: {
+    modelValue: {
       type: Boolean,
       default: false
     },

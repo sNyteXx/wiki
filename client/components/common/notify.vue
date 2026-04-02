@@ -12,7 +12,6 @@
 </template>
 
 <script>
-import { get, sync } from 'vuex-pathify'
 
 export default {
   data() {

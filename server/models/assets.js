@@ -6,7 +6,7 @@ const path = require('path')
 const fs = require('fs-extra')
 const _ = require('lodash')
 const assetHelper = require('../helpers/asset')
-const Promise = require('bluebird')
+const { promisify } = require('util')
 const CLIPBOARD_ROOT_FOLDER = 'clipboard_pictures'
 
 /**
@@ -200,7 +200,7 @@ module.exports = class Asset extends Model {
     } catch (err) {
       return false
     }
-    const sendFile = Promise.promisify(res.sendFile, {context: res})
+    const sendFile = promisify(res.sendFile.bind(res))
     res.type(path.extname(assetPath))
     await sendFile(cachePath, { dotfiles: 'deny' })
     return true

@@ -1,6 +1,4 @@
 const _ = require('lodash')
-const request = require('request-promise')
-const requestRaw = require('request')
 const crypto = require('crypto')
 const he = require('he')
 const striptags = require('striptags')
@@ -1778,16 +1776,14 @@ module.exports = {
         throw new Error('Zum Laden der OpenAI-Modelle wird ein API-Key benötigt.')
       }
 
-      const resp = await request({
+      const resp = await fetch(`${connection.baseUrl}/models`, {
         method: 'GET',
-        uri: `${connection.baseUrl}/models`,
         headers: {
           Authorization: `Bearer ${connection.apiKey}`,
           'Content-Type': 'application/json'
         },
-        json: true,
-        timeout: _.toInteger(this.conf.requestTimeoutMs) || 30000
-      })
+        signal: AbortSignal.timeout(_.toInteger(this.conf.requestTimeoutMs) || 30000)
+      }).then(r => r.json())
 
       const modelIds = _.uniq(_.sortBy((resp.data || [])
         .map(row => _.toString(row.id || ''))
@@ -1802,15 +1798,13 @@ module.exports = {
     }
 
     if (connection.provider === 'ollama') {
-      const resp = await request({
+      const resp = await fetch(`${connection.baseUrl}/api/tags`, {
         method: 'GET',
-        uri: `${connection.baseUrl}/api/tags`,
         headers: {
           'Content-Type': 'application/json'
         },
-        json: true,
-        timeout: _.toInteger(this.conf.requestTimeoutMs) || 30000
-      })
+        signal: AbortSignal.timeout(_.toInteger(this.conf.requestTimeoutMs) || 30000)
+      }).then(r => r.json())
 
       const modelIds = _.uniq(_.sortBy((resp.models || [])
         .map(row => _.toString(row.name || row.model || ''))
@@ -2319,10 +2313,49 @@ module.exports = {
   async streamOpenAICompatible (endpoint, body, { baseUrl, apiKey, onToken, control } = {}) {
     const rootUrl = _.trimEnd(baseUrl || 'https://api.openai.com/v1', '/')
 
+    const abortController = new AbortController()
+    const timeoutId = setTimeout(() => abortController.abort(), _.toInteger(this.conf.requestTimeoutMs) || 30000)
+
+    let upstreamResp
+    try {
+      upstreamResp = await fetch(`${rootUrl}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream'
+        },
+        body: JSON.stringify({
+          ...body,
+          stream: true
+        }),
+        signal: abortController.signal
+      })
+    } catch (err) {
+      clearTimeout(timeoutId)
+      throw err
+    }
+    clearTimeout(timeoutId)
+
+    if (control) {
+      control.cancel = () => {
+        try {
+          abortController.abort()
+        } catch (err) {}
+      }
+    }
+
+    if (upstreamResp.status >= 400) {
+      let errorText = ''
+      try {
+        errorText = await upstreamResp.text()
+      } catch (err) {}
+      throw new Error(this.parseStreamingErrorMessage(errorText, `Streaming-Request fehlgeschlagen (${upstreamResp.status}).`))
+    }
+
     return new Promise((resolve, reject) => {
       let rawText = ''
       let buffer = ''
-      let errorBuffer = ''
       let settled = false
       let queue = Promise.resolve()
       const streamState = {
@@ -2388,56 +2421,19 @@ module.exports = {
           .catch(reject)
       }
 
-      const upstream = requestRaw({
-        method: 'POST',
-        url: `${rootUrl}${endpoint}`,
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          Accept: 'text/event-stream'
-        },
-        body: JSON.stringify({
-          ...body,
-          stream: true
-        }),
-        timeout: _.toInteger(this.conf.requestTimeoutMs) || 30000
+      const { Readable } = require('stream')
+      const reader = Readable.fromWeb(upstreamResp.body)
+      reader.setEncoding('utf8')
+
+      reader.on('data', chunk => {
+        buffer += _.toString(chunk || '').replace(/\r\n/g, '\n')
+        flushBuffer()
       })
-
-      if (control) {
-        control.cancel = () => {
-          try {
-            upstream.abort()
-          } catch (err) {}
-        }
-      }
-
-      upstream.on('response', res => {
-        res.setEncoding('utf8')
-
-        if (res.statusCode >= 400) {
-          res.on('data', chunk => {
-            errorBuffer += chunk
-          })
-          res.on('end', () => {
-            finish(() => reject(new Error(this.parseStreamingErrorMessage(errorBuffer, `Streaming-Request fehlgeschlagen (${res.statusCode}).`))))
-          })
-          return
-        }
-
-        res.on('data', chunk => {
-          buffer += _.toString(chunk || '').replace(/\r\n/g, '\n')
-          flushBuffer()
-        })
-        res.on('end', () => {
-          flushBuffer()
-          finish(() => resolve(rawText))
-        })
-        res.on('error', err => {
-          finish(() => reject(err))
-        })
+      reader.on('end', () => {
+        flushBuffer()
+        finish(() => resolve(rawText))
       })
-
-      upstream.on('error', err => {
+      reader.on('error', err => {
         finish(() => reject(err))
       })
     })
@@ -2446,10 +2442,47 @@ module.exports = {
   async streamOllamaChat (body, { baseUrl, onToken, control } = {}) {
     const resolvedBaseUrl = _.trimEnd(baseUrl || this.conf.ollamaBaseUrl || 'http://localhost:11434', '/')
 
+    const abortController = new AbortController()
+    const timeoutId = setTimeout(() => abortController.abort(), _.toInteger(this.conf.requestTimeoutMs) || 30000)
+
+    let upstreamResp
+    try {
+      upstreamResp = await fetch(`${resolvedBaseUrl}/api/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...body,
+          stream: true
+        }),
+        signal: abortController.signal
+      })
+    } catch (err) {
+      clearTimeout(timeoutId)
+      throw err
+    }
+    clearTimeout(timeoutId)
+
+    if (control) {
+      control.cancel = () => {
+        try {
+          abortController.abort()
+        } catch (err) {}
+      }
+    }
+
+    if (upstreamResp.status >= 400) {
+      let errorText = ''
+      try {
+        errorText = await upstreamResp.text()
+      } catch (err) {}
+      throw new Error(this.parseStreamingErrorMessage(errorText, `Streaming-Request fehlgeschlagen (${upstreamResp.status}).`))
+    }
+
     return new Promise((resolve, reject) => {
       let rawText = ''
       let buffer = ''
-      let errorBuffer = ''
       let settled = false
       let queue = Promise.resolve()
       const streamState = {
@@ -2501,54 +2534,19 @@ module.exports = {
           .catch(reject)
       }
 
-      const upstream = requestRaw({
-        method: 'POST',
-        url: `${resolvedBaseUrl}/api/chat`,
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ...body,
-          stream: true
-        }),
-        timeout: _.toInteger(this.conf.requestTimeoutMs) || 30000
+      const { Readable } = require('stream')
+      const reader = Readable.fromWeb(upstreamResp.body)
+      reader.setEncoding('utf8')
+
+      reader.on('data', chunk => {
+        buffer += _.toString(chunk || '').replace(/\r\n/g, '\n')
+        flushLines(false)
       })
-
-      if (control) {
-        control.cancel = () => {
-          try {
-            upstream.abort()
-          } catch (err) {}
-        }
-      }
-
-      upstream.on('response', res => {
-        res.setEncoding('utf8')
-
-        if (res.statusCode >= 400) {
-          res.on('data', chunk => {
-            errorBuffer += chunk
-          })
-          res.on('end', () => {
-            finish(() => reject(new Error(this.parseStreamingErrorMessage(errorBuffer, `Streaming-Request fehlgeschlagen (${res.statusCode}).`))))
-          })
-          return
-        }
-
-        res.on('data', chunk => {
-          buffer += _.toString(chunk || '').replace(/\r\n/g, '\n')
-          flushLines(false)
-        })
-        res.on('end', () => {
-          flushLines(true)
-          finish(() => resolve(rawText))
-        })
-        res.on('error', err => {
-          finish(() => reject(err))
-        })
+      reader.on('end', () => {
+        flushLines(true)
+        finish(() => resolve(rawText))
       })
-
-      upstream.on('error', err => {
+      reader.on('error', err => {
         finish(() => reject(err))
       })
     })
@@ -2677,31 +2675,29 @@ module.exports = {
   async callOpenAICompatible (endpoint, body, { baseUrl, apiKey }) {
     const rootUrl = _.trimEnd(baseUrl || 'https://api.openai.com/v1', '/')
 
-    return request({
+    const resp = await fetch(`${rootUrl}${endpoint}`, {
       method: 'POST',
-      uri: `${rootUrl}${endpoint}`,
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
       },
-      body,
-      json: true,
-      timeout: _.toInteger(this.conf.requestTimeoutMs) || 30000
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(_.toInteger(this.conf.requestTimeoutMs) || 30000)
     })
+    return resp.json()
   },
 
   async callClaude (userPrompt, systemPrompt) {
     const baseUrl = _.trimEnd(this.conf.claudeBaseUrl || 'https://api.anthropic.com/v1', '/')
 
-    return request({
+    const resp = await fetch(`${baseUrl}/messages`, {
       method: 'POST',
-      uri: `${baseUrl}/messages`,
       headers: {
         'x-api-key': this.conf.claudeApiKey,
         'anthropic-version': '2023-06-01',
         'Content-Type': 'application/json'
       },
-      body: {
+      body: JSON.stringify({
         model: this.conf.claudeModel,
         max_tokens: 1200,
         system: systemPrompt,
@@ -2711,23 +2707,22 @@ module.exports = {
             content: userPrompt
           }
         ]
-      },
-      json: true,
-      timeout: _.toInteger(this.conf.requestTimeoutMs) || 30000
+      }),
+      signal: AbortSignal.timeout(_.toInteger(this.conf.requestTimeoutMs) || 30000)
     })
+    return resp.json()
   },
 
   async callGeminiGenerate (userPrompt, systemPrompt) {
     const baseUrl = _.trimEnd(this.conf.geminiBaseUrl || 'https://generativelanguage.googleapis.com/v1beta', '/')
     const model = encodeURIComponent(this.conf.geminiChatModel || 'gemini-1.5-pro')
 
-    return request({
+    const resp = await fetch(`${baseUrl}/models/${model}:generateContent?key=${encodeURIComponent(this.conf.geminiApiKey)}`, {
       method: 'POST',
-      uri: `${baseUrl}/models/${model}:generateContent?key=${encodeURIComponent(this.conf.geminiApiKey)}`,
       headers: {
         'Content-Type': 'application/json'
       },
-      body: {
+      body: JSON.stringify({
         systemInstruction: {
           parts: [{ text: systemPrompt }]
         },
@@ -2740,44 +2735,42 @@ module.exports = {
         generationConfig: {
           temperature: 0.1
         }
-      },
-      json: true,
-      timeout: _.toInteger(this.conf.requestTimeoutMs) || 30000
+      }),
+      signal: AbortSignal.timeout(_.toInteger(this.conf.requestTimeoutMs) || 30000)
     })
+    return resp.json()
   },
 
   async callGeminiEmbedding (text) {
     const baseUrl = _.trimEnd(this.conf.geminiBaseUrl || 'https://generativelanguage.googleapis.com/v1beta', '/')
     const model = encodeURIComponent(this.conf.geminiEmbeddingModel || 'text-embedding-004')
 
-    return request({
+    const resp = await fetch(`${baseUrl}/models/${model}:embedContent?key=${encodeURIComponent(this.conf.geminiApiKey)}`, {
       method: 'POST',
-      uri: `${baseUrl}/models/${model}:embedContent?key=${encodeURIComponent(this.conf.geminiApiKey)}`,
       headers: {
         'Content-Type': 'application/json'
       },
-      body: {
+      body: JSON.stringify({
         content: {
           parts: [{ text }]
         }
-      },
-      json: true,
-      timeout: _.toInteger(this.conf.requestTimeoutMs) || 30000
+      }),
+      signal: AbortSignal.timeout(_.toInteger(this.conf.requestTimeoutMs) || 30000)
     })
+    return resp.json()
   },
 
   async callOllama (endpoint, body, { baseUrl } = {}) {
     const resolvedBaseUrl = _.trimEnd(baseUrl || this.conf.ollamaBaseUrl || 'http://localhost:11434', '/')
 
-    return request({
+    const resp = await fetch(`${resolvedBaseUrl}${endpoint}`, {
       method: 'POST',
-      uri: `${resolvedBaseUrl}${endpoint}`,
       headers: {
         'Content-Type': 'application/json'
       },
-      body,
-      json: true,
-      timeout: _.toInteger(this.conf.requestTimeoutMs) || 30000
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(_.toInteger(this.conf.requestTimeoutMs) || 30000)
     })
+    return resp.json()
   }
 }

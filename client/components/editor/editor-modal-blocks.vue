@@ -21,7 +21,6 @@
 
 <script>
 import _ from 'lodash'
-import { sync } from 'vuex-pathify'
 
 export default {
   props: {

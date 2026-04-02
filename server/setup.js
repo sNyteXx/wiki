@@ -1,6 +1,5 @@
 const path = require('path')
 const { v4: uuid } = require('uuid')
-const bodyParser = require('body-parser')
 const compression = require('compression')
 const express = require('express')
 const favicon = require('serve-favicon')
@@ -28,6 +27,7 @@ module.exports = () => {
   // ----------------------------------------
 
   let app = express()
+  app.set('query parser', 'simple')
   app.use(compression())
 
   // ----------------------------------------
@@ -44,8 +44,8 @@ module.exports = () => {
   app.set('views', path.join(WIKI.SERVERPATH, 'views'))
   app.set('view engine', 'pug')
 
-  app.use(bodyParser.json())
-  app.use(bodyParser.urlencoded({ extended: false }))
+  app.use(express.json())
+  app.use(express.urlencoded({ extended: false }))
 
   app.locals.config = WIKI.config
   app.locals.data = WIKI.data

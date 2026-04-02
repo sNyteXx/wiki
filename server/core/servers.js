@@ -2,7 +2,10 @@ const fs = require('fs-extra')
 const http = require('http')
 const https = require('https')
 const { ApolloServer } = require('apollo-server-express')
-const Promise = require('bluebird')
+const { makeExecutableSchema } = require('@graphql-tools/schema')
+const { SubscriptionServer } = require('subscriptions-transport-ws')
+const { execute, subscribe } = require('graphql')
+const { promisify } = require('util')
 const _ = require('lodash')
 const jwt = require('jsonwebtoken')
 const cookie = require('cookie')
@@ -15,6 +18,8 @@ module.exports = {
     http: null,
     https: null
   },
+  graphSchema: null,
+  subscriptionServer: null,
   connections: new Map(),
   le: null,
   /**
@@ -23,7 +28,8 @@ module.exports = {
   async startHTTP () {
     WIKI.logger.info(`HTTP Server on port: [ ${WIKI.config.port} ]`)
     this.servers.http = http.createServer(WIKI.app)
-    this.servers.graph.installSubscriptionHandlers(this.servers.http)
+
+    this.setupSubscriptionServer(this.servers.http)
 
     this.servers.http.listen(WIKI.config.port, WIKI.config.bindIP)
     this.servers.http.on('error', (error) => {
@@ -85,7 +91,8 @@ module.exports = {
       return process.exit(1)
     }
     this.servers.https = https.createServer(tlsOpts, WIKI.app)
-    this.servers.graph.installSubscriptionHandlers(this.servers.https)
+
+    this.setupSubscriptionServer(this.servers.https)
 
     this.servers.https.listen(WIKI.config.ssl.port, WIKI.config.bindIP)
     this.servers.https.on('error', (error) => {
@@ -118,48 +125,78 @@ module.exports = {
     })
   },
   /**
+   * Set up subscription server on given HTTP/HTTPS server
+   */
+  setupSubscriptionServer (server) {
+    this.subscriptionServer = SubscriptionServer.create({
+      schema: this.graphSchema,
+      execute,
+      subscribe,
+      onConnect: (connectionParams, webSocket) => {
+        let token = _.get(connectionParams, 'token', null)
+
+        if (!token) {
+          const cookieHeader = _.get(webSocket, 'upgradeReq.headers.cookie', '')
+          if (cookieHeader) {
+            const cookies = cookie.parse(cookieHeader)
+            token = cookies.jwt || null
+          }
+        }
+
+        if (!token) {
+          throw new Error('Unauthorized')
+        }
+
+        try {
+          const user = jwt.verify(token, WIKI.config.certs.public, {
+            audience: WIKI.config.auth.audience,
+            issuer: 'urn:wiki.js',
+            algorithms: ['RS256']
+          })
+
+          if (!_.includes(user.permissions, 'manage:system')) {
+            throw new Error('Forbidden')
+          }
+
+          return { user }
+        } catch (err) {
+          throw new Error('Unauthorized')
+        }
+      }
+    }, {
+      server,
+      path: '/graphql-subscriptions'
+    })
+  },
+  /**
    * Start GraphQL Server
    */
   async startGraphQL () {
-    const graphqlSchema = require('../graph')
-    this.servers.graph = new ApolloServer({
-      ...graphqlSchema,
-      context: ({ req, res }) => ({ req, res }),
-      subscriptions: {
-        onConnect: (connectionParams, webSocket) => {
-          let token = _.get(connectionParams, 'token', null)
+    const graphqlDef = require('../graph')
 
-          if (!token) {
-            const cookieHeader = _.get(webSocket, 'upgradeReq.headers.cookie', '')
-            if (cookieHeader) {
-              const cookies = cookie.parse(cookieHeader)
-              token = cookies.jwt || null
-            }
-          }
-
-          if (!token) {
-            throw new Error('Unauthorized')
-          }
-
-          try {
-            const user = jwt.verify(token, WIKI.config.certs.public, {
-              audience: WIKI.config.auth.audience,
-              issuer: 'urn:wiki.js',
-              algorithms: ['RS256']
-            })
-
-            if (!_.includes(user.permissions, 'manage:system')) {
-              throw new Error('Forbidden')
-            }
-
-            return { user }
-          } catch (err) {
-            throw new Error('Unauthorized')
-          }
-        },
-        path: '/graphql-subscriptions'
-      }
+    let schema = makeExecutableSchema({
+      typeDefs: graphqlDef.typeDefs,
+      resolvers: graphqlDef.resolvers
     })
+    schema = graphqlDef.authDirectiveTransformer(schema)
+    schema = graphqlDef.rateLimitDirectiveTransformer(schema)
+
+    this.graphSchema = schema
+
+    this.servers.graph = new ApolloServer({
+      schema,
+      context: ({ req, res }) => ({ req, res }),
+      plugins: [{
+        async serverWillStart() {
+          return {
+            async drainServer() {
+              // subscription server cleanup handled in stopServers
+            }
+          }
+        }
+      }]
+    })
+    await this.servers.graph.start()
     this.servers.graph.applyMiddleware({ app: WIKI.app, cors: false })
   },
   /**
@@ -182,15 +219,22 @@ module.exports = {
    */
   async stopServers () {
     this.closeConnections()
+    if (this.subscriptionServer) {
+      this.subscriptionServer.close()
+      this.subscriptionServer = null
+    }
+    if (this.servers.graph) {
+      await this.servers.graph.stop()
+      this.servers.graph = null
+    }
     if (this.servers.http) {
-      await Promise.fromCallback(cb => { this.servers.http.close(cb) })
+      await promisify(this.servers.http.close.bind(this.servers.http))()
       this.servers.http = null
     }
     if (this.servers.https) {
-      await Promise.fromCallback(cb => { this.servers.https.close(cb) })
+      await promisify(this.servers.https.close.bind(this.servers.https))()
       this.servers.https = null
     }
-    this.servers.graph = null
   },
   /**
    * Restart Server
@@ -200,14 +244,14 @@ module.exports = {
     switch (srv) {
       case 'http':
         if (this.servers.http) {
-          await Promise.fromCallback(cb => { this.servers.http.close(cb) })
+          await promisify(this.servers.http.close.bind(this.servers.http))()
           this.servers.http = null
         }
         this.startHTTP()
         break
       case 'https':
         if (this.servers.https) {
-          await Promise.fromCallback(cb => { this.servers.https.close(cb) })
+          await promisify(this.servers.https.close.bind(this.servers.https))()
           this.servers.https = null
         }
         this.startHTTPS()

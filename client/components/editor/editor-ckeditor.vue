@@ -16,7 +16,6 @@
 
 <script>
 import _ from 'lodash'
-import { get, sync } from 'vuex-pathify'
 import DecoupledEditor from '@requarks/ckeditor5'
 // import DecoupledEditor from '../../../../wiki-ckeditor5/build/ckeditor'
 import EditorConflict from './ckeditor/conflict.vue'
@@ -99,7 +98,7 @@ export default {
       this.$store.set('editor/content', beautify(this.editor.getData(), { indent_size: 2, end_with_newline: true }))
     }, 300))
 
-    this.$root.$on('editorInsert', opts => {
+    this.$eventBus.$on('editorInsert', opts => {
       switch (opts.kind) {
         case 'IMAGE':
           this.editor.execute('imageInsert', {
@@ -119,19 +118,19 @@ export default {
       }
     })
 
-    this.$root.$on('editorLinkToPage', opts => {
+    this.$eventBus.$on('editorLinkToPage', opts => {
       this.insertLink()
     })
 
     // Handle save conflict
-    this.$root.$on('saveConflict', () => {
+    this.$eventBus.$on('saveConflict', () => {
       this.isConflict = true
     })
-    this.$root.$on('overwriteEditorContent', () => {
+    this.$eventBus.$on('overwriteEditorContent', () => {
       this.editor.setData(this.$store.get('editor/content'))
     })
   },
-  beforeDestroy () {
+  beforeUnmount () {
     if (this.editor) {
       this.editor.destroy()
       this.editor = null

@@ -2,7 +2,7 @@ import i18next from 'i18next'
 import Backend from 'i18next-chained-backend'
 import LocalStorageBackend from 'i18next-localstorage-backend'
 import i18nextXHR from 'i18next-xhr-backend'
-import VueI18Next from '@panter/vue-i18next'
+import { createI18n } from 'vue-i18n'
 import _ from 'lodash'
 
 /* global siteConfig, graphQL */
@@ -10,7 +10,6 @@ import _ from 'lodash'
 import localeQuery from 'gql/common/common-localization-query-translations.gql'
 
 export default {
-  VueI18Next,
   init() {
     i18next
       .use(Backend)
@@ -22,7 +21,7 @@ export default {
           ],
           backendOptions: [
             {
-              expirationTime: 1000 * 60 * 60 * 24 // 24h
+              expirationTime: 1000 * 60 * 60 * 24
             },
             {
               loadPath: '{{lng}}/{{ns}}',
@@ -58,6 +57,17 @@ export default {
         fallbackLng: siteConfig.lang,
         ns: ['common', 'auth']
       })
-    return new VueI18Next(i18next)
+
+    // Create a vue-i18n instance that wraps i18next
+    const i18n = createI18n({
+      legacy: true,
+      locale: siteConfig.lang,
+      fallbackLocale: siteConfig.lang,
+      missing: (locale, key) => {
+        return i18next.t(key, { lng: locale })
+      }
+    })
+
+    return i18n
   }
 }

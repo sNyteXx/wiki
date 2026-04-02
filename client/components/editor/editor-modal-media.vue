@@ -39,8 +39,8 @@
                 template(v-if='folderTree.length > 0')
                   .body-2
                     span.mr-1 /
-                    template(v-for='folder of folderTree')
-                      span(:key='folder.id') {{folder.name}}
+                    template(v-for='folder of folderTree', :key='folder')
+                      span() {{folder.name}}
                       span.mx-1 /
                 .body-2(v-else) / #[em root]
               template(v-if='folders.length > 0 || currentFolderId > 0')
@@ -62,7 +62,7 @@
                 hide-default-footer,
                 dense
               )
-                template(slot='item', slot-scope='props')
+                template(#item='props')
                   tr.is-clickable(
                     @click.left='currentFileId = props.item.id'
                     @click.right.prevent=''
@@ -229,7 +229,6 @@
 
 <script>
 import _ from 'lodash'
-import { get, sync } from 'vuex-pathify'
 import Cookies from 'js-cookie'
 import vueFilePond from 'vue-filepond'
 import 'filepond/dist/filepond.min.css'
@@ -371,7 +370,7 @@ export default {
     insert () {
       const asset = _.find(this.assets, ['id', this.currentFileId])
       const assetPath = this.folderTree.map(f => f.slug).join('/')
-      this.$root.$emit('editorInsert', {
+      this.$eventBus.$emit('editorInsert', {
         kind: asset.kind,
         path: this.currentFolderId > 0 ? `/${assetPath}/${asset.filename}` : `/${asset.filename}`,
         text: asset.filename,

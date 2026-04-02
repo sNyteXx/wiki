@@ -14,10 +14,10 @@
           v-card.md2(flat, :class='$vuetify.theme.dark ? "grey darken-3-d5" : "grey lighten-5"')
             .overline.px-5.pt-5.pb-3.grey--text.text--darken-2 {{pmGroup.category}}
             v-card-text.pt-0
-              template(v-for='(pm, idx) in pmGroup.items')
+              template(v-for='(pm, idx) in pmGroup.items', :key='idx')
                 v-checkbox.pt-0(
                   style='justify-content: space-between;'
-                  :key='pm.permission'
+
                   :label='pm.permission'
                   :hint='pm.hint'
                   persistent-hint
@@ -33,7 +33,7 @@
 <script>
 export default {
   props: {
-    value: {
+    modelValue: {
       type: Object,
       default: () => ({})
     }
@@ -216,8 +216,8 @@ export default {
   },
   computed: {
     group: {
-      get() { return this.value },
-      set(val) { this.$set('input', val) }
+      get() { return this.modelValue },
+      set(val) { this.$emit('update:modelValue', val) }
     }
   }
 }

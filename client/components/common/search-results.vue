@@ -17,8 +17,8 @@
       template(v-if='search && search.length >= 2 && results && results.length > 0')
         v-subheader.white--text {{$t('common:header.searchResultsCount', { total: response.totalHits })}}
         v-list.search-results-items.radius-7.py-0(two-line, dense)
-          template(v-for='(item, idx) of results')
-            v-list-item(@click='goToPage(item)', @click.middle="goToPageInNewTab(item)", :key='item.id', :class='idx === cursor ? `highlighted` : ``')
+          template(v-for='(item, idx) of results', :key='idx')
+            v-list-item(@click='goToPage(item)', @click.middle="goToPageInNewTab(item)", :class='idx === cursor ? `highlighted` : ``')
               v-list-item-avatar(tile)
                 img(src='/_assets/svg/icon-selective-highlighting.svg')
               v-list-item-content
@@ -50,8 +50,8 @@
           span AI-Ergebnisse
         v-list.search-results-ai-items.radius-7.py-0(two-line, dense)
           template(v-if='aiResults.length > 0')
-            template(v-for='(item, idx) of aiResults')
-              v-list-item(@click='goToPage(item)', @click.middle='goToPageInNewTab(item)', :key='`ai-${item.locale}-${item.path}-${idx}`')
+            template(v-for='(item, idx) of aiResults', :key='idx')
+              v-list-item(@click='goToPage(item)', @click.middle='goToPageInNewTab(item)')
                 v-list-item-avatar(tile)
                   img.search-results-ai-item-icon(:src='aiIconUrl', alt='AI')
                 v-list-item-content
@@ -66,8 +66,8 @@
       template(v-if='suggestions && suggestions.length > 0')
         v-subheader.white--text.mt-3 {{$t('common:header.searchDidYouMean')}}
         v-list.search-results-suggestions.radius-7(dense, dark)
-          template(v-for='(term, idx) of suggestions')
-            v-list-item(:key='term', @click='setSearchTerm(term)', :class='idx + results.length === cursor ? `highlighted` : ``')
+          template(v-for='(term, idx) of suggestions', :key='idx')
+            v-list-item(, @click='setSearchTerm(term)', :class='idx + results.length === cursor ? `highlighted` : ``')
               v-list-item-avatar
                 v-icon mdi-magnify
               v-list-item-content
@@ -85,7 +85,6 @@
 <script>
 import _ from 'lodash'
 import gql from 'graphql-tag'
-import { get, sync } from 'vuex-pathify'
 import { OrbitSpinner } from 'epic-spinners'
 
 import searchPagesQuery from 'gql/common/common-pages-query-search.gql'
@@ -173,7 +172,7 @@ export default {
     }
   },
   mounted() {
-    this.$root.$on('searchMove', (dir) => {
+    this.$eventBus.$on('searchMove', (dir) => {
       this.cursor += ((dir === 'up') ? -1 : 1)
       if (this.cursor < -1) {
         this.cursor = -1
@@ -181,7 +180,7 @@ export default {
         this.cursor = this.results.length + this.suggestions.length - 1
       }
     })
-    this.$root.$on('searchEnter', () => {
+    this.$eventBus.$on('searchEnter', () => {
       if (!this.results) {
         return
       }

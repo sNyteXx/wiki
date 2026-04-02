@@ -1,23 +1,32 @@
 /* global WIKI */
 
 const express = require('express')
-const ExpressBrute = require('express-brute')
-const BruteKnex = require('../helpers/brute-knex')
+const { RateLimiterMemory } = require('rate-limiter-flexible')
 const router = express.Router()
 const _ = require('lodash')
 const commonHelper = require('../helpers/common')
 
-const bruteforce = new ExpressBrute(new BruteKnex({
-  createTable: true,
-  knex: WIKI.models.knex
-}), {
-  freeRetries: 5,
-  minWait: 5 * 60 * 1000, // 5 minutes
-  maxWait: 60 * 60 * 1000, // 1 hour
-  failCallback: (req, res, next) => {
-    res.status(401).send('Too many failed attempts. Try again later.')
-  }
+const rateLimiter = new RateLimiterMemory({
+  points: 5, // 5 attempts
+  duration: 5 * 60, // per 5 minutes
+  blockDuration: 60 * 60 // block for 1 hour after exceeding
 })
+
+const bruteForceMiddleware = async (req, res, next) => {
+  try {
+    const key = req.ip
+    await rateLimiter.consume(key)
+    // Attach reset function for compatibility
+    req.brute = {
+      reset: () => {
+        rateLimiter.delete(key).catch(() => {})
+      }
+    }
+    next()
+  } catch (rejRes) {
+    res.status(429).send('Too many failed attempts. Try again later.')
+  }
+}
 
 /**
  * Login form
@@ -98,7 +107,7 @@ router.all('/login/:strategy/callback', async (req, res, next) => {
 /**
  * LEGACY - Login form handling
  */
-router.post('/login', bruteforce.prevent, async (req, res, next) => {
+router.post('/login', bruteForceMiddleware, async (req, res, next) => {
   _.set(res.locals, 'pageMeta.title', 'Login')
   if (req.query.legacy || (req.get('user-agent') && req.get('user-agent').indexOf('Trident') >= 0)) {
     try {
@@ -128,9 +137,11 @@ router.post('/login', bruteforce.prevent, async (req, res, next) => {
  */
 router.get('/logout', async (req, res) => {
   const redirURL = await WIKI.models.users.logout({ req, res })
-  req.logout()
-  res.clearCookie('jwt')
-  res.redirect(redirURL)
+  req.logout((err) => {
+    if (err) { WIKI.logger.warn(err) }
+    res.clearCookie('jwt')
+    res.redirect(redirURL)
+  })
 })
 
 /**
@@ -149,7 +160,7 @@ router.get('/register', async (req, res, next) => {
 /**
  * Verify
  */
-router.get('/verify/:token', bruteforce.prevent, async (req, res, next) => {
+router.get('/verify/:token', bruteForceMiddleware, async (req, res, next) => {
   try {
     const usr = await WIKI.models.userKeys.validateToken({ kind: 'verify', token: req.params.token })
     await WIKI.models.users.query().patch({ isVerified: true }).where('id', usr.id)
@@ -169,7 +180,7 @@ router.get('/verify/:token', bruteforce.prevent, async (req, res, next) => {
 /**
  * Reset Password
  */
-router.get('/login-reset/:token', bruteforce.prevent, async (req, res, next) => {
+router.get('/login-reset/:token', bruteForceMiddleware, async (req, res, next) => {
   try {
     const usr = await WIKI.models.userKeys.validateToken({ kind: 'resetPwd', token: req.params.token })
     if (!usr) {

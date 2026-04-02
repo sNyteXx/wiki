@@ -40,7 +40,7 @@
             :items='breadcrumbs'
             divider='/'
             )
-            template(slot='item', slot-scope='props')
+            template(#item='props')
               v-icon(v-if='props.item.path === "/"', small, @click='goHome') mdi-home
               v-btn.ma-0(v-else, :href='props.item.path', small, text) {{props.item.name}}
           template(v-if='!isPublished')
@@ -95,12 +95,12 @@
             v-card.page-toc-card.mb-5(v-if='tocDecoded.length')
               .overline.pa-5.pb-0(:class='$vuetify.theme.dark ? `blue--text text--lighten-2` : `primary--text`') {{$t('common:page.toc')}}
               v-list.pb-3(dense, nav, :class='$vuetify.theme.dark ? `darken-3-d3` : ``')
-                template(v-for='(tocItem, tocIdx) in tocDecoded')
+                template(v-for='(tocItem, tocIdx) in tocDecoded', :key='tocIdx')
                   v-list-item(@click='$vuetify.goTo(tocItem.anchor, scrollOpts)')
                     v-icon(color='grey', small) {{ $vuetify.rtl ? `mdi-chevron-left` : `mdi-chevron-right` }}
                     v-list-item-title.px-3 {{tocItem.title}}
                   //- v-divider(v-if='tocIdx < toc.length - 1 || tocItem.children.length')
-                  template(v-for='tocSubItem in tocItem.children')
+                  template(v-for='tocSubItem in tocItem.children', :key='tocSubItem')
                     v-list-item(@click='$vuetify.goTo(tocSubItem.anchor, scrollOpts)')
                       v-icon.px-3(color='grey lighten-1', small) {{ $vuetify.rtl ? `mdi-chevron-left` : `mdi-chevron-right` }}
                       v-list-item-title.px-3.caption.grey--text(:class='$vuetify.theme.dark ? `text--lighten-1` : `text--darken-1`') {{tocSubItem.title}}
@@ -370,14 +370,12 @@ import NavSidebar from './nav-sidebar.vue'
 import ChatbotBubble from './chatbot-bubble.vue'
 import Prism from 'prismjs'
 import mermaid from 'mermaid'
-import { get, sync } from 'vuex-pathify'
 import _ from 'lodash'
 import ClipboardJS from 'clipboard'
-import Vue from 'vue'
 
 /* global siteLangs */
 
-Vue.component('Tabset', Tabset)
+// Tabset is registered globally via client-app.js or as a local component
 
 Prism.plugins.autoloader.languages_path = '/_assets/js/prism/'
 Prism.plugins.NormalizeWhitespace.setDefaults({
@@ -418,7 +416,8 @@ export default {
   components: {
     NavSidebar,
     StatusIndicator,
-    ChatbotBubble
+    ChatbotBubble,
+    Tabset
   },
   props: {
     pageId: {
@@ -692,25 +691,25 @@ export default {
       }
     },
     pageEdit () {
-      this.$root.$emit('pageEdit')
+      this.$eventBus.$emit('pageEdit')
     },
     pageHistory () {
-      this.$root.$emit('pageHistory')
+      this.$eventBus.$emit('pageHistory')
     },
     pageSource () {
-      this.$root.$emit('pageSource')
+      this.$eventBus.$emit('pageSource')
     },
     pageConvert () {
-      this.$root.$emit('pageConvert')
+      this.$eventBus.$emit('pageConvert')
     },
     pageDuplicate () {
-      this.$root.$emit('pageDuplicate')
+      this.$eventBus.$emit('pageDuplicate')
     },
     pageMove () {
-      this.$root.$emit('pageMove')
+      this.$eventBus.$emit('pageMove')
     },
     pageDelete () {
-      this.$root.$emit('pageDelete')
+      this.$eventBus.$emit('pageDelete')
     },
     handleSideNavVisibility () {
       if (window.innerWidth === this.winWidth) { return }

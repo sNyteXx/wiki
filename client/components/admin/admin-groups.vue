@@ -46,7 +46,7 @@
             must-sort,
             hide-default-footer
           )
-            template(slot='item', slot-scope='props')
+            template(#item='props')
               tr.is-clickable(:active='props.selected', @click='$router.push("/groups/" + props.item.id)')
                 td {{ props.item.id }}
                 td: strong {{ props.item.name }}

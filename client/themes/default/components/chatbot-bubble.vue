@@ -47,8 +47,8 @@
               v-btn(value='detailed', small, text) Detail
 
           .chatbot-messages(ref='messages')
-            template(v-for='(msg, idx) in messages')
-              .chatbot-message(:key='`msg-${idx}`', :class='`is-${msg.role}`')
+            template(v-for='(msg, idx) in messages', :key='idx')
+              .chatbot-message(, :class='`is-${msg.role}`')
                 .chatbot-message-title {{ msg.role === 'user' ? 'Du' : 'Assistent' }}
                 .chatbot-message-text.chatbot-message-text--markdown(v-if='msg.role === `assistant`', v-html='renderAssistantMessage(msg.text)')
                 .chatbot-message-text.chatbot-message-text--plain(v-else) {{ msg.text }}
@@ -57,7 +57,7 @@
                   v-list.chatbot-source-list(dense)
                     v-list-item(
                       v-for='(src, sIdx) in displaySources(msg)'
-                      :key='`src-${idx}-${sIdx}`'
+
                       :href='sourceHref(src)'
                       target='_blank'
                     )
@@ -150,7 +150,6 @@ import _ from 'lodash'
 import gql from 'graphql-tag'
 import MarkdownIt from 'markdown-it'
 import Cookies from 'js-cookie'
-import { get } from 'vuex-pathify'
 
 const md = new MarkdownIt({
   html: false,
@@ -280,7 +279,7 @@ export default {
   created () {
     this.ensureViewerState()
   },
-  beforeDestroy () {
+  beforeUnmount () {
     this.abortActiveStream()
   },
   methods: {

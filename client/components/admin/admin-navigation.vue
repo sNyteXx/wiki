@@ -90,10 +90,10 @@
                           v-list-item-content
                             em.caption.blue--text.text--lighten-4 {{$t('navigation.emptyList')}}
                         draggable(v-model='currentTree')
-                          template(v-for='navItem in currentTree')
+                          template(v-for='navItem in currentTree', :key='navItem')
                             v-list-item(
                               v-if='navItem.kind === "link"'
-                              :key='navItem.id'
+
                               :class='(navItem === current) ? "blue" : ""'
                               @click='selectItem(navItem)'
                               )
@@ -103,14 +103,14 @@
                               v-list-item-title {{navItem.label}}
                             .py-2.clickable(
                               v-else-if='navItem.kind === "divider"'
-                              :key='navItem.id'
+
                               :class='(navItem === current) ? "blue" : ""'
                               @click='selectItem(navItem)'
                               )
                               v-divider
                             v-subheader.pl-4.clickable(
                               v-else-if='navItem.kind === "header"'
-                              :key='navItem.id'
+
                               :class='(navItem === current) ? "blue" : ""'
                               @click='selectItem(navItem)'
                               ) {{navItem.label}}

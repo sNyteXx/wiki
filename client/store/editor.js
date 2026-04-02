@@ -1,30 +1,26 @@
-import { make } from 'vuex-pathify'
+import { defineStore } from 'pinia'
 
-const state = {
-  editor: '',
-  editorKey: '',
-  content: '',
-  mode: 'create',
-  activeModal: '',
-  activeModalData: null,
-  media: {
-    folderTree: [],
-    currentFolderId: 0,
-    currentFileId: null
-  },
-  checkoutDateActive: ''
-}
-
-export default {
-  namespaced: true,
-  state,
-  mutations: {
-    ...make.mutations(state),
-    pushMediaFolderTree: (st, folder) => {
-      st.media.folderTree = st.media.folderTree.concat(folder)
+export const useEditorStore = defineStore('editor', {
+  state: () => ({
+    editor: '',
+    editorKey: '',
+    content: '',
+    mode: 'create',
+    activeModal: '',
+    activeModalData: null,
+    media: {
+      folderTree: [],
+      currentFolderId: 0,
+      currentFileId: null
     },
-    popMediaFolderTree: (st) => {
-      st.media.folderTree = st.media.folderTree.slice(0, -1)
+    checkoutDateActive: ''
+  }),
+  actions: {
+    pushMediaFolderTree (folder) {
+      this.media.folderTree = this.media.folderTree.concat(folder)
+    },
+    popMediaFolderTree () {
+      this.media.folderTree = this.media.folderTree.slice(0, -1)
     }
   }
-}
+})

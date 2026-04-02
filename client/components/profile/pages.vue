@@ -23,7 +23,7 @@
             sort-desc,
             hide-default-footer
           )
-            template(slot='item', slot-scope='props')
+            template(#item='props')
               tr.is-clickable(:active='props.selected', @click='goToPage(props.item.id)')
                 td
                   .body-2: strong {{ props.item.title }}

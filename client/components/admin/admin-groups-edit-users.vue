@@ -56,7 +56,7 @@ import unassignUserMutation from 'gql/admin/groups/groups-mutation-unassign.gql'
 
 export default {
   props: {
-    value: {
+    modelValue: {
       type: Object,
       default: () => ({})
     }
@@ -80,8 +80,8 @@ export default {
   },
   computed: {
     group: {
-      get() { return this.value },
-      set(val) { this.$set('input', val) }
+      get() { return this.modelValue },
+      set(val) { this.$emit('update:modelValue', val) }
     },
     pages () {
       if (this.pagination.rowsPerPage == null || this.pagination.totalItems == null) {
